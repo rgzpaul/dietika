@@ -76,18 +76,115 @@ function validateMealMacros(mealIndex) {
     const fatPerc = parseFloat(document.getElementById(`meal_fat_${mealIndex}`).value) || 0;
     
     const total = carbsPerc + proteinPerc + fatPerc;
+    const errorElement = document.getElementById(`macro_error_${mealIndex}`);
+    const nutrientInfoElement = document.getElementById(`nutrient_info_${mealIndex}`);
     
     if (Math.abs(total - 100) > 0.01) {
-        document.getElementById(`macro_error_${mealIndex}`).innerHTML = 
-            `Macro percentages must sum to 100% (current: ${total.toFixed(2)}%)`;
+        errorElement.style.display = 'block';
+        errorElement.innerHTML = `Macro percentages must sum to 100% (current: ${total.toFixed(2)}%)`;
+        nutrientInfoElement.style.display = 'none';
         mealValidity[mealIndex] = false;
     } else {
-        document.getElementById(`macro_error_${mealIndex}`).innerHTML = '';
+        errorElement.style.display = 'none';
+        errorElement.innerHTML = '';
+        nutrientInfoElement.style.display = 'block';
         mealValidity[mealIndex] = true;
     }
     
     toggleSubmitButton();
     return mealValidity[mealIndex];
+}
+
+function generateInputs() {
+    const numMeals = document.getElementById('numero_di_pasti').value;
+    const container = document.getElementById('inputs_container');
+    container.innerHTML = '';
+    mealValidity = Array(numMeals).fill(true);
+
+    for (let i = 0; i < numMeals; i++) {
+        const mealDiv = document.createElement('div');
+        mealDiv.classList.add('meal-input');
+        mealDiv.innerHTML = `
+            <h3>Meal ${i + 1}</h3>
+            <label for="percentage_${i}">Meal Percentage (%):</label>
+            <input type="number" id="percentage_${i}" name="percentage_${i}" required 
+                   min="0" max="100" data-meal-index="${i}">
+        
+            <div class="meal-macro-distribution">
+                <h4>Meal Macro Distribution</h4>
+                <div class="macro-input-group">
+                    <label for="meal_carbs_${i}">Carbs (%):</label>
+                    <input type="number" id="meal_carbs_${i}" name="meal_carbs_${i}" 
+                           min="0" max="100" required value="40"
+                           data-meal-index="${i}">
+                </div>
+                <div class="macro-input-group">
+                    <label for="meal_protein_${i}">Protein (%):</label>
+                    <input type="number" id="meal_protein_${i}" name="meal_protein_${i}" 
+                           min="0" max="100" required value="30"
+                           data-meal-index="${i}">
+                </div>
+                <div class="macro-input-group">
+                    <label for="meal_fat_${i}">Fat (%):</label>
+                    <input type="number" id="meal_fat_${i}" name="meal_fat_${i}" 
+                           min="0" max="100" required value="30"
+                           data-meal-index="${i}">
+                </div>
+            </div>
+            
+            <label for="food_items_${i}">Foods:</label>
+            <select id="food_items_${i}" name="food_items_${i}[]" multiple required 
+                    data-meal-index="${i}">
+                ${generateFoodOptions()}
+            </select>
+            <div id="macro_error_${i}" class="error" style="display: none;"></div>
+            <div id="nutrient_info_${i}" class="nutrient-info" style="display: block;"></div>
+        `;
+        container.appendChild(mealDiv);
+
+        // Attach Event Listeners
+        const percentageInput = mealDiv.querySelector(`#percentage_${i}`);
+        percentageInput.addEventListener('input', () => {
+            const isValid = validateMealMacros(i);
+            if (isValid) {
+                updateNutrientDisplay(i);
+            }
+        });
+
+        const carbsInput = mealDiv.querySelector(`#meal_carbs_${i}`);
+        carbsInput.addEventListener('input', () => {
+            const isValid = validateMealMacros(i);
+            if (isValid) {
+                updateNutrientDisplay(i);
+            }
+        });
+
+        const proteinInput = mealDiv.querySelector(`#meal_protein_${i}`);
+        proteinInput.addEventListener('input', () => {
+            const isValid = validateMealMacros(i);
+            if (isValid) {
+                updateNutrientDisplay(i);
+            }
+        });
+
+        const fatInput = mealDiv.querySelector(`#meal_fat_${i}`);
+        fatInput.addEventListener('input', () => {
+            const isValid = validateMealMacros(i);
+            if (isValid) {
+                updateNutrientDisplay(i);
+            }
+        });
+
+        const foodSelect = mealDiv.querySelector(`#food_items_${i}`);
+        foodSelect.addEventListener('change', () => {
+            const isValid = validateMealMacros(i);
+            if (isValid) {
+                updateNutrientDisplay(i);
+            }
+        });
+    }
+
+    toggleSubmitButton();
 }
 
 function toggleSubmitButton() {
@@ -404,25 +501,47 @@ function safeRefresh() {
 }
 
 document.getElementById('mealPlannerForm').addEventListener('submit', function (event) {
+    event.preventDefault(); // Prevent form submission by default
     isSubmitting = true;
+    
     const numMeals = parseInt(document.getElementById('numero_di_pasti').value, 10);
     let invalidMeals = [];
+    let totalPercentage = 0;
 
+    // Check both macro distribution and meal percentages
     for (let i = 0; i < numMeals; i++) {
+        // Check macro distribution
         const carbsPerc = parseFloat(document.getElementById(`meal_carbs_${i}`).value) || 0;
         const proteinPerc = parseFloat(document.getElementById(`meal_protein_${i}`).value) || 0;
         const fatPerc = parseFloat(document.getElementById(`meal_fat_${i}`).value) || 0;
+        const macroTotal = carbsPerc + proteinPerc + fatPerc;
 
-        const total = carbsPerc + proteinPerc + fatPerc;
+        // Check meal percentage
+        const mealPercentage = parseFloat(document.getElementById(`percentage_${i}`).value) || 0;
+        totalPercentage += mealPercentage;
 
-        if (Math.abs(total - 100) > 0.01) {
-            invalidMeals.push(`Meal ${i + 1} (Total: ${total.toFixed(2)}%)`);
+        if (Math.abs(macroTotal - 100) > 0.01) {
+            invalidMeals.push(`Meal ${i + 1} (Macro Total: ${macroTotal.toFixed(2)}%)`);
         }
     }
 
+    let errorMessage = '';
+
+    // Check for invalid macro distributions
     if (invalidMeals.length > 0) {
-        event.preventDefault(); // Prevent form submission
-        alert(`Please ensure all meals have macro percentages summing to 100%.\nInvalid Meals:\n- ${invalidMeals.join('\n- ')}`);
+        errorMessage = `Please ensure all meals have macro percentages summing to 100%.\nInvalid Meals:\n- ${invalidMeals.join('\n- ')}`;
+    }
+
+    // Check for invalid meal percentage distribution
+    if (Math.abs(totalPercentage - 100) > 0.01) {
+        errorMessage += `${errorMessage ? '\n\n' : ''}Total meal distribution must equal 100% (current: ${totalPercentage.toFixed(2)}%)`;
+    }
+
+    if (errorMessage) {
+        alert(errorMessage);
+    } else {
+        // If all validations pass, submit the form
+        this.submit();
     }
 
     isSubmitting = false;
