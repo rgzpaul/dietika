@@ -1,8 +1,52 @@
 <?php
+
+session_start();
+
 // Airtable API credentials
 $airtable_api_token = AIRTABLE_API_TOKEN;
 $airtable_base = AIRTABLE_BASE;
 $airtable_table = AIRTABLE_FOOD_ITEMS_TABLE;
+$airtable_trainers = AIRTABLE_TRAINERS_TABLE;
+
+// Function to authenticate trainer
+function authenticateTrainer($username, $password) {
+    global $airtable_api_token, $airtable_base, $airtable_trainers;
+    
+    $url = "https://api.airtable.com/v0/$airtable_base/$airtable_trainers";
+    $curl = curl_init($url);
+    
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer $airtable_api_token",
+    ]);
+    
+    $response = curl_exec($curl);
+    curl_close($curl);
+    
+    $records = json_decode($response, true)['records'] ?? [];
+    
+    foreach ($records as $record) {
+        if (isset($record['fields']['Username']) && 
+            isset($record['fields']['Password']) && 
+            $record['fields']['Username'] === $username && 
+            $record['fields']['Password'] === $password) {
+            
+            // Start session and store trainer info
+            session_start();
+            $_SESSION['trainer_id'] = $record['id'];
+            $_SESSION['trainer_username'] = $username;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// Function to check if user is logged in
+function isLoggedIn() {
+    session_start();
+    return isset($_SESSION['trainer_id']);
+}
 
 // Function to fetch food items from Airtable
 function fetchFoodItems($api_token, $base_id, $table_id) {
@@ -36,7 +80,7 @@ function fetchFoodItems($api_token, $base_id, $table_id) {
 $foodItems = fetchFoodItems($airtable_api_token, $airtable_base, $airtable_table);
 
 // Process form submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && isset($_POST['total_kcals'])) {
     try {
         $numero_di_pasti = intval($_POST['numero_di_pasti']);
         $total_kcals = intval($_POST['total_kcals']);

@@ -158,6 +158,8 @@ label {
     Form Elements
 ----------------------------- */
 input[type="number"],
+input[type="text"],
+input[type="password"],
 select {
     width: 100%;
     padding: 12px;
@@ -410,11 +412,15 @@ button:hover {
     Hide from print
 ----------------------------- */
 @media print {
-    h1, .summary-container, .progress-bar-container, .button-container {
+
+    h1,
+    .summary-container,
+    .progress-bar-container,
+    .button-container {
         display: none;
     }
 
-    .meal-header > p {
+    .meal-header>p {
         display: none;
     }
 
@@ -422,7 +428,8 @@ button:hover {
         page-break-after: always;
     }
 
-    .container,.meal-container {
+    .container,
+    .meal-container {
         box-shadow: none;
     }
 }
