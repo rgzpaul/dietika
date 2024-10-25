@@ -5,7 +5,7 @@ function generateInputs() {
     const numMeals = document.getElementById('numero_di_pasti').value;
     const container = document.getElementById('inputs_container');
     container.innerHTML = '';
-    mealValidity = Array(numMeals).fill(false); // Initialize all meals as invalid
+    mealValidity = Array(numMeals).fill(true); // Changed from false to true
 
     for (let i = 0; i < numMeals; i++) {
         const mealDiv = document.createElement('div');
@@ -403,7 +403,6 @@ function safeRefresh() {
     document.getElementById('total_kcals').focus();
 }
 
-// Add an event listener to the form's submit event
 document.getElementById('mealPlannerForm').addEventListener('submit', function (event) {
     isSubmitting = true;
     const numMeals = parseInt(document.getElementById('numero_di_pasti').value, 10);

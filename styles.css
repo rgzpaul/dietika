@@ -410,7 +410,7 @@ button:hover {
     Hide from print
 ----------------------------- */
 @media print {
-    h1, .summary-container, .progress-bar-container, .button-container .macro-comparison {
+    h1, .summary-container, .progress-bar-container, .button-container {
         display: none;
     }
 

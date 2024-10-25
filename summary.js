@@ -44,12 +44,6 @@ function displayMealPlan(data) {
                     <h3>Calories</h3>
                     <p>Target: ${data.summary.totalCalories.target} kcal</p>
                     <p>Actual: ${data.summary.totalCalories.actual.toFixed(1)} kcal</p>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" 
-                             style="width: ${Math.min((data.summary.totalCalories.actual / data.summary.totalCalories.target) * 100, 100)}%; background-color: #4CAF50;">
-                            <span class="progress-text">${Math.min((data.summary.totalCalories.actual / data.summary.totalCalories.target) * 100, 100).toFixed(1)}%</span>
-                        </div>
-                    </div>
                 </div>
                 <div class="summary-card">
                     <h3>Macros</h3>
@@ -66,26 +60,12 @@ function displayMealPlan(data) {
         html += `
             <div class="meal-container">
                 <div class="meal-header">
-                    <h2>Meal ${meal.mealNumber} (${meal.percentage}%)</h2>
-                    <p>Target Calories: ${meal.calories.target} kcal | 
-                       Actual Calories: ${meal.calories.actual.toFixed(1)} kcal</p>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" 
-                             style="width: ${Math.min((meal.calories.actual / meal.calories.target) * 100, 100)}%; background-color: #4CAF50;">
-                            <span class="progress-text">${Math.min((meal.calories.actual / meal.calories.target) * 100, 100).toFixed(1)}%</span>
-                        </div>
-                    </div>
+                    <h2 contenteditable>Meal ${meal.mealNumber}</h2>
                 </div>
                 
                 <div class="macro-comparison">
                     <div>
-                        <h3>Target Macros</h3>
-                        <p>Carbs: ${meal.targets.carbs}g</p>
-                        <p>Protein: ${meal.targets.protein}g</p>
-                        <p>Fat: ${meal.targets.fat}g</p>
-                    </div>
-                    <div>
-                        <h3>Actual Macros</h3>
+                        <h3>Macros</h3>
                         <p>Carbs: ${meal.actual.carbs}g</p>
                         <div class="progress-bar-container">
                             <div class="progress-bar" 
