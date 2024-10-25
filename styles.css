@@ -136,6 +136,19 @@ th {
     background-color: #dc3545;
 }
 
+[contenteditable] {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+}
+
+span:has(svg) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 /* -----------------------------
     Typography
 ----------------------------- */
@@ -338,6 +351,10 @@ button:hover {
     position: relative;
 }
 
+.progress-bar-container.white {
+    background-color: rgb(250, 250, 250);
+}
+
 .progress-bar {
     height: 100%;
     border-radius: 10px;
@@ -416,7 +433,8 @@ button:hover {
     h1,
     .summary-container,
     .progress-bar-container,
-    .button-container {
+    .button-container,
+    .lucide {
         display: none;
     }
 

@@ -43,17 +43,25 @@ if (!isLoggedIn()) {
     exit;
 }
 
+$cleanFoodItems = array_map(function($item) {
+    return [
+        'fields' => [
+            'Alimento' => $item['fields']['Alimento'],
+            'Carboidrati' => floatval($item['fields']['Carboidrati']),
+            'Proteine' => floatval($item['fields']['Proteine']),
+            'Grassi' => floatval($item['fields']['Grassi'])
+        ]
+    ];
+}, $foodItems);
 ?>
 
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
     <title>Macro-Based Meal Planner</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
     <div class="container">
         <h1>Macro-Based Meal Planner</h1>
@@ -77,10 +85,9 @@ if (!isLoggedIn()) {
         </form>
 
         <script>
-            const foodItems = <?php echo json_encode($foodItems); ?>;
+            window.foodItems = <?php echo json_encode($foodItems, JSON_NUMERIC_CHECK); ?>;
         </script>
         <script src="functions.js"></script>
     </div>
 </body>
-
 </html>

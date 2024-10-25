@@ -79,6 +79,11 @@ function fetchFoodItems($api_token, $base_id, $table_id) {
 // Fetch food items
 $foodItems = fetchFoodItems($airtable_api_token, $airtable_base, $airtable_table);
 
+// Helper function to sanitize input
+function sanitize_input($data) {
+    return htmlspecialchars(stripslashes(trim($data)));
+}
+
 // Process form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && isset($_POST['total_kcals'])) {
     try {
@@ -96,7 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && 
             $percentage = floatval($_POST["percentage_$i"]);
             $totalPercentage += $percentage;
             
-            $selectedFoods = isset($_POST["food_items_$i"]) ? $_POST["food_items_$i"] : [];
+            // Sanitize each food item
+            $selectedFoods = isset($_POST["food_items_$i"]) ? array_map('sanitize_input', $_POST["food_items_$i"]) : [];
             
             // Get meal-specific macro percentages
             $carbsPerc = floatval($_POST["meal_carbs_$i"]);
@@ -143,8 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && 
 
                         // Get the limiting macro (smallest non-zero value)
                         $validGrams = array_filter($requiredGrams, function($g) { return $g > 0; });
-                        $grams = empty($validGrams) ? 0 : min($validGrams);
-                        $grams = floor($grams);
+                        $grams = floor(!empty($validGrams) ? min($validGrams) : 0);
 
                         // Calculate actual macros provided
                         $providedCarbs = ($carbsPer100g * $grams) / 100;
@@ -249,14 +254,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && 
         
         // Add a script to copy the meal plan to clipboard and show success message
         echo "<script>
-            const mealPlanJson = " . $jsonMealPlan . ";
+            const mealPlanJson = $jsonMealPlan;
             navigator.clipboard.writeText(JSON.stringify(mealPlanJson, null, 2))
                 .then(() => {
-                    alert('Meal plan has been copied to clipboard!');
+                    alert('Meal plan has been copied!');
                 })
                 .catch(err => {
                     console.error('Failed to copy meal plan:', err);
-                    alert('Failed to copy meal plan to clipboard. Please check console for details.');
+                    alert('Failed to copy meal plan. Please check console for details.');
                 });
         </script>";
 
@@ -290,3 +295,4 @@ function determinePrimaryMacro($carbs, $protein, $fat) {
     // Return the macro with highest ratio if no clear primary
     return array_keys($ratios)[array_search(max($ratios), $ratios)];
 }
+?>

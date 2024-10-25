@@ -10,11 +10,12 @@
     <div class="container">
         <h1>Meal Plan Summary</h1>
         <div id="buttonContainer" class="button-container">
-            <button onclick="parseClipboard()">Generate Meal Plan</button>
+            <button onclick="parseClipboard()">Generate</button>
             <button onclick="window.print()">Print</button>
         </div>
         <div id="output"></div>
         <script src="summary.js"></script>
+        <script src="https://unpkg.com/lucide@latest"></script>
     </div>
 </body>
 </html>

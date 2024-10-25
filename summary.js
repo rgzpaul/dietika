@@ -60,28 +60,28 @@ function displayMealPlan(data) {
         html += `
             <div class="meal-container">
                 <div class="meal-header">
-                    <h2 contenteditable>Meal ${meal.mealNumber}</h2>
+                <h2> <span contenteditable>Meal ${meal.mealNumber}<span> <i data-lucide="pen-line" style="height: 30px"></i> </h2>
                 </div>
                 
                 <div class="macro-comparison">
                     <div>
                         <h3>Macros</h3>
                         <p>Carbs: ${meal.actual.carbs}g</p>
-                        <div class="progress-bar-container">
+                        <div class="progress-bar-container white">
                             <div class="progress-bar" 
                                  style="width: ${Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100)}%; background-color: #4CAF50;">
                                 <span class="progress-text">${Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100).toFixed(1)}%</span>
                             </div>
                         </div>
                         <p>Protein: ${meal.actual.protein}g</p>
-                        <div class="progress-bar-container">
+                        <div class="progress-bar-container white">
                             <div class="progress-bar" 
                                  style="width: ${Math.min((meal.actual.protein / meal.targets.protein) * 100, 100)}%; background-color: #2196F3;">
                                 <span class="progress-text">${Math.min((meal.actual.protein / meal.targets.protein) * 100, 100).toFixed(1)}%</span>
                             </div>
                         </div>
                         <p>Fat: ${meal.actual.fat}g</p>
-                        <div class="progress-bar-container">
+                        <div class="progress-bar-container white">
                             <div class="progress-bar" 
                                  style="width: ${Math.min((meal.actual.fat / meal.targets.fat) * 100, 100)}%; background-color: #FF9800;">
                                 <span class="progress-text">${Math.min((meal.actual.fat / meal.targets.fat) * 100, 100).toFixed(1)}%</span>
@@ -121,4 +121,7 @@ function displayMealPlan(data) {
 
     // Insert the generated HTML into the output div
     document.getElementById('output').innerHTML = html;
+
+    // Re-initialize Lucide icons
+    lucide.createIcons();
 }
