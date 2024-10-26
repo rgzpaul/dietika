@@ -36,21 +36,15 @@ function handleFormSubmit(event) {
         totalPercentage += mealPercentage;
 
         // Collect portions from selected foods
-        const hiddenInputContainer = document.getElementById(`food_items_container_${i}`);
-        const selectedFoods = hiddenInputContainer.querySelectorAll(`input[name="food_items_${i}[]"]`);
-        selectedFoods.forEach(input => {
-            const foodName = input.value;
-            const nutrientInfo = document.getElementById(`nutrient_info_${i}`);
-            const foodSummaries = nutrientInfo.querySelectorAll('.food-summary');
-
-            foodSummaries.forEach(summary => {
-                if (summary.querySelector('strong').textContent === foodName) {
-                    const portionMatch = summary.textContent.match(/Portion: (\d+)g/);
-                    if (portionMatch) {
-                        formPortions[foodName] = (formPortions[foodName] || 0) + parseInt(portionMatch[1]);
-                    }
-                }
-            });
+        const nutrientInfo = document.getElementById(`nutrient_info_${i}`);
+        const foodSummaries = nutrientInfo.querySelectorAll('.food-summary');
+        
+        foodSummaries.forEach(summary => {
+            const foodName = summary.querySelector('strong').textContent;
+            const portionMatch = summary.textContent.match(/Porzione: (\d+)g/);
+            if (portionMatch) {
+                formPortions[foodName] = parseInt(portionMatch[1], 10);
+            }
         });
 
         if (Math.abs(macroTotal - 100) > 0.01) {
@@ -84,62 +78,46 @@ function handleFormSubmit(event) {
         method: 'POST',
         body: formData
     })
-        .then(response => response.text())
-        .then(text => {
-            // Extract the JSON data from the script tag in the response
-            const match = text.match(/const mealPlanJson = (\{.*?\});/s);
-            if (match) {
-                const mealPlanData = JSON.parse(match[1]);
-
-                // Compare portions
-                const summaryPortions = {};
-                mealPlanData.meals.forEach(meal => {
-                    meal.foods.forEach(food => {
-                        summaryPortions[food.food] = (summaryPortions[food.food] || 0) + food.portion;
-                    });
+    .then(response => response.text())
+    .then(text => {
+        // Extract the JSON data from the script tag in the response
+        const match = text.match(/const mealPlanJson = (\{.*?\});/s);
+        if (match) {
+            const mealPlanData = JSON.parse(match[1]);
+            
+            // Track calculated portions from the response
+            const calculatedPortions = {};
+            mealPlanData.meals.forEach(meal => {
+                meal.foods.forEach(food => {
+                    calculatedPortions[food.food] = (calculatedPortions[food.food] || 0) + food.portion;
                 });
-
-                // Log any discrepancies
-                const discrepancies = [];
-                Object.keys({ ...formPortions, ...summaryPortions }).forEach(food => {
-                    const formAmount = formPortions[food] || 0;
-                    const summaryAmount = summaryPortions[food] || 0;
-                    if (Math.abs(formAmount - summaryAmount) > 0.1) {
-                        discrepancies.push({
-                            food,
-                            formAmount,
-                            summaryAmount,
-                            difference: Math.abs(formAmount - summaryAmount)
-                        });
-                    }
-                });
-
-                if (discrepancies.length > 0) {
-                    console.warn('Portion discrepancies detected:', discrepancies);
+            });
+            
+            // Store both sets of portions with the meal plan data
+            const enhancedData = {
+                ...mealPlanData,
+                portionData: {
+                    original: formPortions,
+                    calculated: calculatedPortions
                 }
+            };
 
-                // Store the enhanced data in sessionStorage
-                const enhancedData = {
-                    ...mealPlanData,
-                    formPortions,
-                    summaryPortions,
-                    discrepancies
-                };
-                sessionStorage.setItem('mealPlanData', JSON.stringify(enhancedData));
+            // Store the enhanced data in sessionStorage
+            sessionStorage.setItem('mealPlanData', JSON.stringify(enhancedData));
 
-                // Open magic.php in a new tab
-                window.open('magic.php', '_blank');
-            } else {
-                throw new Error('Could not extract meal plan data from response');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while processing the meal plan.');
-        })
-        .finally(() => {
-            isSubmitting = false;
-        });
+            // Open magic.php in a new tab
+            window.open('magic.php', '_blank');
+        } else {
+            throw new Error('Could not extract meal plan data from response');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while processing the meal plan.');
+    })
+    .finally(() => {
+        isSubmitting = false;
+    });
 }
 
 function generateInputs() {

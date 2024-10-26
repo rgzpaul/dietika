@@ -32,37 +32,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'])) {
 
 // Check if user is logged in, if not show login form
 if (!isLoggedIn()) {
-    ?>
+?>
     <!DOCTYPE html>
     <html>
+
     <head>
         <meta charset="UTF-8">
         <title>Login</title>
         <link rel="stylesheet" href="styles.css">
+        <script async defer data-website-id="c777761a-0284-4e43-a07b-6bd6c3a2a014" src="https://sts.prgz.it/umami.js"></script>
     </head>
+
     <body>
         <div class="container">
             <h1>Login</h1>
             <form method="post" id="loginForm">
                 <input type="text" name="username" placeholder="Username" required>
                 <input type="password" name="password" placeholder="Password" required>
-                <button type="button" onclick="submitForm()">Accedi</button>
+                <button type="button" onclick="submitForm()" data-umami-event="Login button" data-umami-event-user="">Accedi</button>
                 <?php if (isset($error)) echo "<p>$error</p>"; ?>
             </form>
         </div>
         <script>
             function submitForm() {
+                const username = document.querySelector('input[name="username"]').value;
+                const button = document.querySelector('button[data-umami-event="Login button"]');
+                button.setAttribute('data-umami-event-user', username);
                 document.getElementById('loginForm').submit();
             }
         </script>
     </body>
+
     </html>
-    <?php
+<?php
     exit;
 }
 
 // Process and display the meal planner content
-$cleanFoodItems = array_map(function($item) {
+$cleanFoodItems = array_map(function ($item) {
     return [
         'fields' => [
             'Alimento' => $item['fields']['Alimento'],
@@ -76,11 +83,14 @@ $cleanFoodItems = array_map(function($item) {
 
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Meal Planner</title>
     <link rel="stylesheet" href="styles.css">
+    <script async defer data-website-id="c777761a-0284-4e43-a07b-6bd6c3a2a014" src="https://sts.prgz.it/umami.js"></script>
 </head>
+
 <body>
     <div class="container">
         <h1>Meal Planner</h1>
@@ -108,4 +118,5 @@ $cleanFoodItems = array_map(function($item) {
         <script src="functions.js"></script>
     </div>
 </body>
+
 </html>

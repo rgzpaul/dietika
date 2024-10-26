@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Riepilogo</title>
     <link rel="stylesheet" href="styles.css">
+    <script async defer data-website-id="c777761a-0284-4e43-a07b-6bd6c3a2a014" src="https://sts.prgz.it/umami.js"></script>
 </head>
 <body>
     <div class="container">
@@ -29,7 +30,7 @@
                 if (storedData) {
                     // Show print button if we have data
                     document.getElementById('buttonContainer').innerHTML = `
-                        <button onclick="window.print()">Stampa</button>
+                        <button onclick="window.print()" data-umami-event="Print button">Stampa</button>
                     `;
                 }
             });
