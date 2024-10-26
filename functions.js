@@ -486,10 +486,15 @@ function updateNutrientDisplay(mealIndex) {
     };
 
     // Step 3: Calculate initial distribution
-    const macroDistribution = calculateInitialDistribution({
-        foods: foodsByPrimaryMacro,
-        targets: { carbs: targetCarbs, protein: targetProtein, fat: targetFat }
-    });
+    const macroDistribution = calculateOptimalDistribution(
+        foodProfiles, 
+        { 
+            carbs: targetCarbs, 
+            protein: targetProtein, 
+            fat: targetFat 
+        },
+        0.05  // Add 5% tolerance
+    );
 
     // Step 4: Calculate optimal portions
     const portions = calculateOptimalPortions(foodProfiles, macroDistribution);
@@ -865,180 +870,91 @@ function determinePrimaryMacro(carbs, protein, fat) {
 
 // Distribution Calculation Functions
 
-function calculateOptimalDistribution(foods, targets) {
-    // Analyze all foods
+function calculateOptimalDistribution(foods, targets, tolerance = 0.05) {
     const foodProfiles = foods.map(analyzeFoodProfile);
-
-    // Group foods by primary and secondary macros
-    const groupedFoods = {
-        carbs: foodProfiles.filter(f => f.primaryMacro === 'carbs'),
-        protein: foodProfiles.filter(f => f.primaryMacro === 'protein'),
-        fat: foodProfiles.filter(f => f.primaryMacro === 'fat'),
-        secondary: {
-            carbs: foodProfiles.filter(f => f.secondaryMacro === 'carbs'),
-            protein: foodProfiles.filter(f => f.secondaryMacro === 'protein'),
-            fat: foodProfiles.filter(f => f.secondaryMacro === 'fat')
-        }
-    };
-
-    // Initial distribution based on primary macro foods
-    const distribution = calculatePrimaryDistribution(groupedFoods, targets);
-
-    // Adjust for gaps using secondary macro foods
-    const adjustedDistribution = adjustDistributionWithSecondary(distribution, groupedFoods, targets);
-
-    // Final optimization
-    return optimizeDistribution(adjustedDistribution, foodProfiles, targets);
-}
-
-function calculatePrimaryDistribution(groupedFoods, targets) {
-    const distribution = {};
-
-    Object.entries(targets).forEach(([macro, target]) => {
-        const primaryFoods = groupedFoods[macro];
-
-        if (primaryFoods.length === 0) {
-            return; // Will be handled in secondary distribution
-        }
-
-        // Weight distribution by macro density and score
-        const totalScore = primaryFoods.reduce((sum, food) =>
-            sum + (food.scores[macro] * food.density[macro]), 0);
-
-        primaryFoods.forEach(food => {
-            const weight = (food.scores[macro] * food.density[macro]) / totalScore;
-            distribution[food.name] = {
-                grams: (target * weight * 100) / food.macrosper100g[macro],
-                contribution: {}
-            };
-        });
+    
+    // Initialize distribution structure
+    let currentDistribution = {};
+    foodProfiles.forEach(food => {
+        currentDistribution[food.name] = {
+            grams: 0,
+            contribution: {}
+        };
     });
 
-    return distribution;
-}
+    // Get initial distribution
+    const initialDistribution = calculateInitialDistribution({
+        foods: {
+            carbs: foodProfiles.filter(f => f.primaryMacro === 'carbs'),
+            protein: foodProfiles.filter(f => f.primaryMacro === 'protein'),
+            fat: foodProfiles.filter(f => f.primaryMacro === 'fat')
+        },
+        targets
+    });
 
-function adjustDistributionWithSecondary(distribution, groupedFoods, targets) {
-    // Calculate current macro totals
-    const currentTotals = calculateMacroTotals(distribution, groupedFoods.all);
-
-    // Find gaps in macro targets
-    const gaps = {
-        carbs: targets.carbs - currentTotals.carbs,
-        protein: targets.protein - currentTotals.protein,
-        fat: targets.fat - currentTotals.fat
-    };
-
-    // Fill gaps using secondary macro foods
-    Object.entries(gaps).forEach(([macro, gap]) => {
-        if (gap <= 0) return;
-
-        const secondaryFoods = groupedFoods.secondary[macro];
-        if (secondaryFoods.length === 0) return;
-
-        // Distribute remaining targets among secondary foods
-        const totalSecondaryScore = secondaryFoods.reduce((sum, food) =>
-            sum + food.scores[macro], 0);
-
-        secondaryFoods.forEach(food => {
-            const weight = food.scores[macro] / totalSecondaryScore;
-            const additionalGrams = (gap * weight * 100) / food.macrosper100g[macro];
-
-            if (!distribution[food.name]) {
-                distribution[food.name] = { grams: 0, contribution: {} };
+    // Convert initial distribution format
+    Object.entries(initialDistribution).forEach(([macro, foods]) => {
+        Object.entries(foods).forEach(([foodName, amount]) => {
+            if (!currentDistribution[foodName]) {
+                currentDistribution[foodName] = { grams: 0, contribution: {} };
             }
-            distribution[food.name].grams += additionalGrams;
+            // Convert macro grams to portion grams
+            const food = foodProfiles.find(f => f.name === foodName);
+            if (food) {
+                const gramsNeeded = (amount * 100) / food.macrosper100g[macro];
+                currentDistribution[foodName].grams = Math.max(
+                    currentDistribution[foodName].grams,
+                    gramsNeeded
+                );
+            }
         });
     });
 
-    return distribution;
-}
-
-function optimizeDistribution(distribution, foodProfiles, targets) {
+    // Optimize with macro limits
+    let iterations = 0;
     const maxIterations = 10;
-    let currentIteration = 0;
-    let bestDistribution = distribution;
-    let bestError = calculateError(distribution, foodProfiles, targets);
 
-    while (currentIteration < maxIterations) {
-        // Try small adjustments to portions
-        const adjustedDistribution = tryAdjustments(bestDistribution, foodProfiles, targets);
-        const newError = calculateError(adjustedDistribution, foodProfiles, targets);
+    while (iterations < maxIterations) {
+        const currentTotals = calculateMacroTotals(currentDistribution, foodProfiles);
+        
+        const exceedsLimits = Object.entries(targets).some(([macro, target]) => {
+            const current = currentTotals[macro];
+            return current > target * (1 + tolerance) || current < target * (1 - tolerance);
+        });
 
-        if (newError < bestError) {
-            bestDistribution = adjustedDistribution;
-            bestError = newError;
-        }
+        if (!exceedsLimits) break;
 
-        currentIteration++;
+        currentDistribution = Object.fromEntries(
+            Object.entries(currentDistribution).map(([foodName, foodData]) => {
+                const food = foodProfiles.find(f => f.name === foodName);
+                if (!food) return [foodName, foodData];
+
+                const adjustmentFactor = calculateAdjustmentFactor(
+                    food,
+                    foodData,
+                    currentTotals,
+                    targets,
+                    tolerance
+                );
+
+                return [foodName, {
+                    ...foodData,
+                    grams: Math.max(0, Math.floor(foodData.grams * adjustmentFactor))
+                }];
+            })
+        );
+
+        iterations++;
     }
 
-    // Round final portions to practical amounts
-    return roundPortions(bestDistribution);
-}
-
-// Distribution Helper Functions
-
-function calculateError(distribution, foodProfiles, targets) {
-    const totals = calculateMacroTotals(distribution, foodProfiles);
-
-    return Math.sqrt(
-        Math.pow(totals.carbs - targets.carbs, 2) +
-        Math.pow(totals.protein - targets.protein, 2) +
-        Math.pow(totals.fat - targets.fat, 2)
-    );
-}
-
-function roundPortion(value) {
-    return Math.floor(value);
-}
-
-// Legacy Distribution Functions
-
-function calculateInitialDistribution({ foods, targets }) {
-    const distribution = {
-        carbs: {},
-        protein: {},
-        fat: {}
-    };
-
-    Object.entries(targets).forEach(([macro, target]) => {
-        const specializedFoods = foods[macro];
-        if (specializedFoods.length === 0) {
-            const allFoods = [...foods.carbs, ...foods.protein, ...foods.fat];
-            allFoods.forEach(food => {
-                distribution[macro][food.name] = target / allFoods.length;
-            });
-        } else {
-            const totalRatio = specializedFoods.reduce((sum, food) =>
-                sum + food.macroRatios[macro], 0);
-
-            specializedFoods.forEach(food => {
-                distribution[macro][food.name] =
-                    (target * food.macroRatios[macro]) / totalRatio;
-            });
-        }
-    });
-
-    return distribution;
+    return currentDistribution;
 }
 
 function calculateOptimalPortions(foodProfiles, distribution) {
     return foodProfiles.map(food => {
-        const requiredGrams = {
-            carbs: distribution.carbs[food.name] ?
-                (distribution.carbs[food.name] * 100) / food.macrosper100g.carbs : 0,
-            protein: distribution.protein[food.name] ?
-                (distribution.protein[food.name] * 100) / food.macrosper100g.protein : 0,
-            fat: distribution.fat[food.name] ?
-                (distribution.fat[food.name] * 100) / food.macrosper100g.fat : 0
-        };
-
-        const limitingGrams = Math.min(
-            ...Object.values(requiredGrams)
-                .filter(g => g > 0 && isFinite(g))
-        );
-
-        const grams = Math.floor(limitingGrams || 0);
+        // Get the portion from the distribution
+        const portion = distribution[food.name] || { grams: 0 };
+        const grams = portion.grams;
 
         return {
             name: food.name,
@@ -1051,4 +967,154 @@ function calculateOptimalPortions(foodProfiles, distribution) {
             primaryMacro: food.primaryMacro
         };
     });
+}
+
+function calculateMacroTotals(distribution, foodProfiles) {
+    return Object.entries(distribution).reduce((totals, [foodName, foodData]) => {
+        const food = foodProfiles.find(f => f.name === foodName);
+        if (!food) return totals;
+
+        const factor = foodData.grams / 100;
+        return {
+            carbs: totals.carbs + (food.macrosper100g.carbs * factor),
+            protein: totals.protein + (food.macrosper100g.protein * factor),
+            fat: totals.fat + (food.macrosper100g.fat * factor)
+        };
+    }, { carbs: 0, protein: 0, fat: 0 });
+}
+
+function calculateAdjustmentFactor(food, foodData, currentTotals, targets, tolerance) {
+    const primaryMacro = food.primaryMacro;
+    const currentAmount = currentTotals[primaryMacro];
+    const targetAmount = targets[primaryMacro];
+    
+    if (currentAmount > targetAmount * (1 + tolerance)) {
+        return 0.9; // Reduce by 10%
+    } else if (currentAmount < targetAmount * (1 - tolerance)) {
+        return 1.1; // Increase by 10%
+    }
+    
+    return 1.0;
+}
+
+// Distribution Functions
+
+function calculateInitialDistribution({ foods, targets }) {
+    const distribution = {
+        carbs: {},
+        protein: {},
+        fat: {}
+    };
+
+    Object.entries(targets).forEach(([macro, target]) => {
+        const specializedFoods = foods[macro] || [];
+        
+        if (specializedFoods.length === 0) {
+            // If no specialized foods, combine all available foods
+            const allFoods = [...(foods.carbs || []), ...(foods.protein || []), ...(foods.fat || [])];
+            if (allFoods.length > 0) {
+                allFoods.forEach(food => {
+                    if (food.macrosper100g && food.macrosper100g[macro]) {
+                        distribution[macro][food.name] = target / allFoods.length;
+                    }
+                });
+            }
+        } else {
+            // Calculate total ratio for specialized foods
+            const totalRatio = specializedFoods.reduce((sum, food) => {
+                if (food.macrosper100g && food.macrosper100g[macro]) {
+                    const macroAmount = food.macrosper100g[macro];
+                    const totalMacros = Object.values(food.macrosper100g).reduce((a, b) => a + b, 0);
+                    return sum + (macroAmount / totalMacros);
+                }
+                return sum;
+            }, 0);
+
+            if (totalRatio > 0) {
+                specializedFoods.forEach(food => {
+                    if (food.macrosper100g && food.macrosper100g[macro]) {
+                        const macroAmount = food.macrosper100g[macro];
+                        const totalMacros = Object.values(food.macrosper100g).reduce((a, b) => a + b, 0);
+                        distribution[macro][food.name] = (target * (macroAmount / totalMacros)) / totalRatio;
+                    }
+                });
+            }
+        }
+    });
+
+    return distribution;
+}
+
+function analyzeFoodProfile(food) {
+    if (!food.macrosper100g) {
+        console.warn('Missing macrosper100g for food:', food.name);
+        return {
+            name: food.name,
+            macrosper100g: { carbs: 0, protein: 0, fat: 0 },
+            primaryMacro: 'carbs',
+            secondaryMacro: 'protein',
+            scores: { carbs: 0, protein: 0, fat: 0 },
+            caloriesper100g: 0,
+            density: { carbs: 0, protein: 0, fat: 0 }
+        };
+    }
+
+    const { carbs, protein, fat } = food.macrosper100g;
+    const total = (carbs || 0) + (protein || 0) + (fat || 0);
+
+    if (total === 0) {
+        console.warn('Zero total macros for food:', food.name);
+        return {
+            name: food.name,
+            macrosper100g: { carbs: 0, protein: 0, fat: 0 },
+            primaryMacro: 'carbs',
+            secondaryMacro: 'protein',
+            scores: { carbs: 0, protein: 0, fat: 0 },
+            caloriesper100g: 0,
+            density: { carbs: 0, protein: 0, fat: 0 }
+        };
+    }
+
+    // Calculate basic ratios
+    const baseRatios = {
+        carbs: (carbs || 0) / total,
+        protein: (protein || 0) / total,
+        fat: (fat || 0) / total
+    };
+
+    // Calculate caloric contribution
+    const calories = calculateCalories(carbs || 0, protein || 0, fat || 0);
+    const caloricRatios = {
+        carbs: ((carbs || 0) * 4) / calories,
+        protein: ((protein || 0) * 4) / calories,
+        fat: ((fat || 0) * 9) / calories
+    };
+
+    // Calculate density scores
+    const density = {
+        carbs: (carbs || 0) / calories,
+        protein: (protein || 0) / calories,
+        fat: (fat || 0) / calories
+    };
+
+    // Calculate scores
+    const scores = {
+        carbs: (baseRatios.carbs * 0.4) + (caloricRatios.carbs * 0.4) + (density.carbs * 0.2),
+        protein: (baseRatios.protein * 0.4) + (caloricRatios.protein * 0.4) + (density.protein * 0.2),
+        fat: (baseRatios.fat * 0.4) + (caloricRatios.fat * 0.4) + (density.fat * 0.2)
+    };
+
+    const sortedScores = Object.entries(scores)
+        .sort(([, a], [, b]) => b - a);
+
+    return {
+        name: food.name,
+        macrosper100g: food.macrosper100g,
+        macroRatios: baseRatios,  // Add this line
+        primaryMacro: sortedScores[0][0],
+        secondaryMacro: sortedScores[1][0],
+        scores,
+        caloriesper100g: calories,
+        density
+    };
 }
