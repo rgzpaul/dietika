@@ -373,6 +373,10 @@ function generateProgressBars({ carbs, protein, fat }) {
                 `Exceeds by: ${Math.round(carbs.current - carbs.target)}g` :
                 'Target reached'}
                     </div>
+                    ${carbs.progress < 50 ? 
+            `<div class="error" style="color: red; margin-top: 15px;">
+                Add carb-rich foods (e.g., rice, pasta, bread, potatoes)
+             </div>` : ''}
                 </div>
 
                 <div class="macro-progress">
@@ -393,6 +397,10 @@ function generateProgressBars({ carbs, protein, fat }) {
                 `Exceeds by: ${Math.round(protein.current - protein.target)}g` :
                 'Target reached'}
                     </div>
+                    ${protein.progress < 50 ? 
+            `<div class="error" style="color: red; margin-top: 15px;">
+                Add protein-rich foods (e.g., chicken, fish, eggs, legumes)
+             </div>` : ''}
                 </div>
 
                 <div class="macro-progress">
@@ -413,6 +421,10 @@ function generateProgressBars({ carbs, protein, fat }) {
                 `Exceeds by: ${Math.round(fat.current - fat.target)}g` :
                 'Target reached'}
                     </div>
+                    ${fat.progress < 50 ? 
+            `<div class="error" style="color: red; margin-top: 15px;">
+                Add healthy fat sources (e.g., olive oil, nuts, avocado)
+             </div>` : ''}
                 </div>
             </div>
         `;
