@@ -16,44 +16,73 @@ function handleFormSubmit(event) {
     event.preventDefault();
     isSubmitting = true;
     
+    // Collect form data
+    const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
     const numMeals = parseInt(document.getElementById('numero_di_pasti').value, 10);
     let invalidMeals = [];
     let totalPercentage = 0;
-
+    
+    // Store original form portions for comparison
+    const formPortions = {};
+    
+    // Validate meals and collect portions
     for (let i = 0; i < numMeals; i++) {
         const carbsPerc = parseFloat(document.getElementById(`meal_carbs_${i}`).value) || 0;
         const proteinPerc = parseFloat(document.getElementById(`meal_protein_${i}`).value) || 0;
         const fatPerc = parseFloat(document.getElementById(`meal_fat_${i}`).value) || 0;
         const macroTotal = carbsPerc + proteinPerc + fatPerc;
-
+        
         const mealPercentage = parseFloat(document.getElementById(`percentage_${i}`).value) || 0;
         totalPercentage += mealPercentage;
+        
+        // Collect portions from selected foods
+        const hiddenInputContainer = document.getElementById(`food_items_container_${i}`);
+        const selectedFoods = hiddenInputContainer.querySelectorAll(`input[name="food_items_${i}[]"]`);
+        selectedFoods.forEach(input => {
+            const foodName = input.value;
+            const nutrientInfo = document.getElementById(`nutrient_info_${i}`);
+            const foodSummaries = nutrientInfo.querySelectorAll('.food-summary');
+            
+            foodSummaries.forEach(summary => {
+                if (summary.querySelector('strong').textContent === foodName) {
+                    const portionMatch = summary.textContent.match(/Portion: (\d+)g/);
+                    if (portionMatch) {
+                        formPortions[foodName] = (formPortions[foodName] || 0) + parseInt(portionMatch[1]);
+                    }
+                }
+            });
+        });
 
         if (Math.abs(macroTotal - 100) > 0.01) {
             invalidMeals.push(`Meal ${i + 1} (Macro Total: ${macroTotal.toFixed(2)}%)`);
         }
     }
-
+    
+    // Validate meal distributions
     let errorMessage = '';
-
+    
     if (invalidMeals.length > 0) {
         errorMessage = `Please ensure all meals have macro percentages summing to 100%.\nInvalid Meals:\n- ${invalidMeals.join('\n- ')}`;
     }
-
+    
     if (Math.abs(totalPercentage - 100) > 0.01) {
         errorMessage += `${errorMessage ? '\n\n' : ''}Total meal distribution must equal 100% (current: ${totalPercentage.toFixed(2)}%)`;
     }
-
+    
     if (errorMessage) {
         alert(errorMessage);
         isSubmitting = false;
         return;
     }
-
-    // Submit form normally to get the JSON response
+    
+    // Enhanced form submission with portion tracking
+    const formData = new FormData(this);
+    formData.append('original_portions', JSON.stringify(formPortions));
+    
+    // Submit form and handle response
     fetch(this.action, {
         method: 'POST',
-        body: new FormData(this)
+        body: formData
     })
     .then(response => response.text())
     .then(text => {
@@ -62,8 +91,41 @@ function handleFormSubmit(event) {
         if (match) {
             const mealPlanData = JSON.parse(match[1]);
             
-            // Store the data in sessionStorage
-            sessionStorage.setItem('mealPlanData', JSON.stringify(mealPlanData));
+            // Compare portions
+            const summaryPortions = {};
+            mealPlanData.meals.forEach(meal => {
+                meal.foods.forEach(food => {
+                    summaryPortions[food.food] = (summaryPortions[food.food] || 0) + food.portion;
+                });
+            });
+            
+            // Log any discrepancies
+            const discrepancies = [];
+            Object.keys({ ...formPortions, ...summaryPortions }).forEach(food => {
+                const formAmount = formPortions[food] || 0;
+                const summaryAmount = summaryPortions[food] || 0;
+                if (Math.abs(formAmount - summaryAmount) > 0.1) {
+                    discrepancies.push({
+                        food,
+                        formAmount,
+                        summaryAmount,
+                        difference: Math.abs(formAmount - summaryAmount)
+                    });
+                }
+            });
+            
+            if (discrepancies.length > 0) {
+                console.warn('Portion discrepancies detected:', discrepancies);
+            }
+            
+            // Store the enhanced data in sessionStorage
+            const enhancedData = {
+                ...mealPlanData,
+                formPortions,
+                summaryPortions,
+                discrepancies
+            };
+            sessionStorage.setItem('mealPlanData', JSON.stringify(enhancedData));
             
             // Open magic.php in a new tab
             window.open('magic.php', '_blank');
@@ -926,15 +988,8 @@ function calculateError(distribution, foodProfiles, targets) {
     );
 }
 
-function roundPortions(distribution) {
-    // Round to nearest 5g or 10g depending on portion size
-    return Object.fromEntries(
-        Object.entries(distribution).map(([name, data]) => {
-            const roundingUnit = data.grams >= 100 ? 10 : 5;
-            const roundedGrams = Math.round(data.grams / roundingUnit) * roundingUnit;
-            return [name, { ...data, grams: roundedGrams }];
-        })
-    );
+function roundPortion(value) {
+    return Math.floor(value);
 }
 
 // Legacy Distribution Functions
