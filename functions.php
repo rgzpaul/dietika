@@ -10,50 +10,120 @@ $airtable_trainers = AIRTABLE_TRAINERS_TABLE;
 // Function to authenticate trainer
 function authenticateTrainer($username, $password) {
     global $airtable_api_token, $airtable_base, $airtable_trainers;
-    
+
     $url = "https://api.airtable.com/v0/$airtable_base/$airtable_trainers";
     $curl = curl_init($url);
-    
+
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($curl, CURLOPT_HTTPHEADER, [
         "Authorization: Bearer $airtable_api_token",
     ]);
-    
+
     $response = curl_exec($curl);
     curl_close($curl);
-    
+
     $records = json_decode($response, true)['records'] ?? [];
-    
+
     foreach ($records as $record) {
-        if (isset($record['fields']['Username']) && 
-            isset($record['fields']['Password']) && 
-            $record['fields']['Username'] === $username && 
+        if (isset($record['fields']['Username']) &&
+            isset($record['fields']['Password']) &&
+            $record['fields']['Username'] === $username &&
             $record['fields']['Password'] === $password) {
+
+            // Get expiry date from record
+            $expiry = $record['fields']['Expiry'] ?? null;
             
-            $status = $record['fields']['Status'] ?? '';
-            
-            switch($status) {
-                case 'Active':
-                case 'Trial':
-                    session_start();
-                    $_SESSION['trainer_id'] = $record['id'];
-                    $_SESSION['trainer_username'] = $username;
-                    return true;      // Login
-                case 'Trial Expired':
-                    return 'expired'; // Trial expired error
-                default:
-                    return false;
+            // If no expiry date is set, deny access
+            if (!$expiry) {
+                return false;
             }
+
+            // Convert expiry date to timestamp for comparison
+            $expiry_timestamp = strtotime($expiry);
+            $current_timestamp = time();
+
+            // Check if account has expired
+            if ($current_timestamp > $expiry_timestamp) {
+                return 'expired';
+            }
+
+            // Account is valid, proceed with login
+            session_start(); // Ensure session is active
+            $_SESSION['trainer_id'] = $record['id'];
+            $_SESSION['trainer_username'] = $username;
+
+            // Generate a unique session ID for this login
+            $session_id = bin2hex(random_bytes(32));
+            $_SESSION['session_id'] = $session_id;
+
+            // Update the session ID in Airtable
+            updateTrainerSession($record['id'], $session_id);
+
+            return true;
         }
     }
-    
-    return false;  // Invalid credentials error
+
+    return false;
 }
 
-// Function to check if user is logged in
+function updateTrainerSession($trainer_id, $session_id) {
+    global $airtable_api_token, $airtable_base, $airtable_trainers;
+    $url = "https://api.airtable.com/v0/$airtable_base/$airtable_trainers/$trainer_id";
+
+    $data = json_encode([
+        "fields" => [
+            "session_id" => $session_id
+        ]
+    ]);
+
+    $curl = curl_init($url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'PATCH');
+    curl_setopt($curl, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer $airtable_api_token",
+        "Content-Type: application/json"
+    ]);
+    curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+
+    curl_exec($curl);
+    curl_close($curl);
+}
+
+function fetchTrainerSession($trainer_id) {
+    global $airtable_api_token, $airtable_base, $airtable_trainers;
+    $url = "https://api.airtable.com/v0/$airtable_base/$airtable_trainers/$trainer_id";
+
+    $curl = curl_init($url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer $airtable_api_token",
+    ]);
+
+    $response = curl_exec($curl);
+    curl_close($curl);
+
+    $record = json_decode($response, true);
+
+    return $record['fields']['session_id'] ?? null;
+}
+
 function isLoggedIn() {
     session_start();
-    return isset($_SESSION['trainer_id']);
+
+    // Check that the session data is set
+    if (isset($_SESSION['trainer_id'], $_SESSION['session_id'])) {
+        $trainer_id = $_SESSION['trainer_id'];
+
+        // Fetch the session ID from Airtable
+        $currentSessionId = fetchTrainerSession($trainer_id);
+
+        // Validate that the stored session ID matches the current session
+        if ($currentSessionId === $_SESSION['session_id']) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // Function to fetch food items from Airtable

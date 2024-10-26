@@ -2,6 +2,21 @@
 require_once '/home/keluwhr/sites/lucabandiera.it/utility/config.php';
 require_once 'functions.php';
 
+session_start();
+
+// Validate session ID before displaying content
+if (isset($_SESSION['trainer_id'], $_SESSION['session_id'])) {
+    $currentSessionId = fetchTrainerSession($_SESSION['trainer_id']); // Get session ID from Airtable
+
+    // Check if the session ID matches the one in Airtable
+    if ($currentSessionId !== $_SESSION['session_id']) {
+        session_unset(); // Clear session data
+        session_destroy(); // End the session
+        header('Location: ' . $_SERVER['PHP_SELF']); // Redirect to login page
+        exit;
+    }
+}
+
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'])) {
     $result = authenticateTrainer($_POST['username'], $_POST['password']);
@@ -9,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'])) {
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
     } else if ($result === 'expired') {
-        $error = "Trial expired";
+        $error = "This account has expired";
     } else {
         $error = "Invalid credentials";
     }
@@ -46,6 +61,7 @@ if (!isLoggedIn()) {
     exit;
 }
 
+// Process and display the meal planner content
 $cleanFoodItems = array_map(function($item) {
     return [
         'fields' => [
