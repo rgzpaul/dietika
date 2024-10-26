@@ -176,6 +176,9 @@ span:has(svg) {
 }
 
 .error-container {
+    opacity: 0;
+    animation: fadeIn 500ms forwards;
+    animation-delay: 500ms;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -189,7 +192,7 @@ span:has(svg) {
     border-radius: 8px;
     padding: 2rem;
     max-width: 500px;
-    margin: 0 auto;
+    margin: 0 auto
 }
 
 .error-message h2 {
@@ -467,6 +470,12 @@ button:hover {
 
     to {
         background-position: 0 0;
+    }
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
     }
 }
 
