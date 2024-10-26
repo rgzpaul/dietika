@@ -152,38 +152,38 @@ function generateInputs() {
         const mealDiv = document.createElement('div');
         mealDiv.classList.add('meal-input');
         mealDiv.innerHTML = `
-            <h3>Meal ${i + 1}</h3>
-            <label for="percentage_${i}">Meal Percentage (%):</label>
+            <h3>Pasto n. ${i + 1}</h3>
+            <label for="percentage_${i}">Percentuale sul totale (%):</label>
             <input type="number" id="percentage_${i}" name="percentage_${i}" required 
                    min="0" max="100" data-meal-index="${i}">
         
             <div class="meal-macro-distribution">
-                <h4>Meal Macro Distribution</h4>
+                <h4>Distribuzione dei macro</h4>
                 <div class="macro-input-group">
-                    <label for="meal_carbs_${i}">Carbs (%):</label>
+                    <label for="meal_carbs_${i}">Carboidrati (%):</label>
                     <input type="number" id="meal_carbs_${i}" name="meal_carbs_${i}" 
                            min="0" max="100" required value="40"
                            data-meal-index="${i}">
                 </div>
                 <div class="macro-input-group">
-                    <label for="meal_protein_${i}">Protein (%):</label>
+                    <label for="meal_protein_${i}">Proteine (%):</label>
                     <input type="number" id="meal_protein_${i}" name="meal_protein_${i}" 
                            min="0" max="100" required value="30"
                            data-meal-index="${i}">
                 </div>
                 <div class="macro-input-group">
-                    <label for="meal_fat_${i}">Fat (%):</label>
+                    <label for="meal_fat_${i}">Grassi (%):</label>
                     <input type="number" id="meal_fat_${i}" name="meal_fat_${i}" 
                            min="0" max="100" required value="30"
                            data-meal-index="${i}">
                 </div>
             </div>
             
-            <label for="food_search_${i}">Search Foods:</label>
+            <label for="food_search_${i}">Inserisci alimenti:</label>
             <div class="food-selector" id="food_selector_${i}">
                 <div class="search-container">
                     <input type="text" id="food_search_${i}" 
-                           class="food-search" placeholder="Search foods..."
+                           class="food-search" placeholder="Cerca..."
                            data-meal-index="${i}">
                     <div class="search-results" id="search_results_${i}"></div>
                 </div>
@@ -276,23 +276,23 @@ function validateMealMacros(mealIndex) {
 
     // Check macros sum to 100%
     if (Math.abs(macroTotal - 100) > 0.01) {
-        errorMessages.push(`Macro percentages must sum to 100% (current: ${macroTotal.toFixed(2)}%)`);
+        errorMessages.push(`La distribuzione non risulta 100% (valore attuale: ${macroTotal.toFixed(0)}%)`);
     }
 
     // Check if foods are selected
     if (selectedFoods === 0) {
-        errorMessages.push('At least one food item must be selected');
+        errorMessages.push('Seleziona un alimento');
     }
 
     // Check meal percentage
     const mealPerc = parseFloat(document.getElementById(`percentage_${mealIndex}`).value) || 0;
     if (mealPerc <= 0) {
-        errorMessages.push('Meal percentage must be greater than 0');
+        errorMessages.push('La percentuale del pasto deve essere maggiore di 0%');
     }
 
     // Check if total meal percentages exceed 100%
     if (totalMealPercentage > 100.01) {
-        errorMessages.push(`Total meal percentages exceed 100% (current: ${totalMealPercentage.toFixed(2)}%)`);
+        errorMessages.push(`Il totale dei pasti eccede il 100% (valore attuale: ${totalMealPercentage.toFixed(0)}%)`);
     }
 
     if (errorMessages.length > 0) {
@@ -353,11 +353,11 @@ function toggleSubmitButton() {
 function generateProgressBars({ carbs, protein, fat }) {
     return `
             <div class="remaining-macros">
-                <h4>Progress Towards Meal Targets:</h4>
+                <h4>Percentuale di raggiungimento:</h4>
                 
                 <div class="macro-progress">
                     <div class="macro-label">
-                        <span>Carbs:</span>
+                        <span>Carboidrati:</span>
                         <span${carbs.current > carbs.target ? ' style="color:red;"' : ''}>${Math.round(carbs.current)}g / ${Math.round(carbs.target)}g</span>
                     </div>
                     <div class="progress-bar-container">
@@ -368,20 +368,20 @@ function generateProgressBars({ carbs, protein, fat }) {
                     </div>
                     <div class="remaining-text">
                         ${carbs.current < carbs.target ?
-            `Still needed: ${Math.round(carbs.target - carbs.current)}g` :
+            `Mancano: ${Math.round(carbs.target - carbs.current)}g` :
             carbs.current > carbs.target ?
-                `Exceeds by: ${Math.round(carbs.current - carbs.target)}g` :
+                `Eccedenza: ${Math.round(carbs.current - carbs.target)}g` :
                 'Target reached'}
                     </div>
                     ${carbs.progress < 50 ? 
             `<div class="error" style="color: red; margin-top: 15px;">
-                Add carb-rich foods (e.g., rice, pasta, bread, potatoes)
+                Aggiungi una fonte di carboidrati
              </div>` : ''}
                 </div>
 
                 <div class="macro-progress">
                     <div class="macro-label">
-                        <span>Protein:</span>
+                        <span>Proteine:</span>
                         <span${protein.current > protein.target ? ' style="color:red;"' : ''}>${Math.round(protein.current)}g / ${Math.round(protein.target)}g</span>
                     </div>
                     <div class="progress-bar-container">
@@ -392,20 +392,20 @@ function generateProgressBars({ carbs, protein, fat }) {
                     </div>
                     <div class="remaining-text">
                         ${protein.current < protein.target ?
-            `Still needed: ${Math.round(protein.target - protein.current)}g` :
+            `Mancano: ${Math.round(protein.target - protein.current)}g` :
             protein.current > protein.target ?
-                `Exceeds by: ${Math.round(protein.current - protein.target)}g` :
+                `Eccedenza: ${Math.round(protein.current - protein.target)}g` :
                 'Target reached'}
                     </div>
                     ${protein.progress < 50 ? 
             `<div class="error" style="color: red; margin-top: 15px;">
-                Add protein-rich foods (e.g., chicken, fish, eggs, legumes)
+                Aggiungi una fonte di proteine
              </div>` : ''}
                 </div>
 
                 <div class="macro-progress">
                     <div class="macro-label">
-                        <span>Fat:</span>
+                        <span>Grassi:</span>
                         <span${fat.current > fat.target ? ' style="color:red;"' : ''}>${Math.round(fat.current)}g / ${Math.round(fat.target)}g</span>
                     </div>
                     <div class="progress-bar-container">
@@ -416,14 +416,14 @@ function generateProgressBars({ carbs, protein, fat }) {
                     </div>
                     <div class="remaining-text">
                         ${fat.current < fat.target ?
-            `Still needed: ${Math.round(fat.target - fat.current)}g` :
+            `Mancano: ${Math.round(fat.target - fat.current)}g` :
             fat.current > fat.target ?
-                `Exceeds by: ${Math.round(fat.current - fat.target)}g` :
+                `Eccedenza: ${Math.round(fat.current - fat.target)}g` :
                 'Target reached'}
                     </div>
                     ${fat.progress < 50 ? 
             `<div class="error" style="color: red; margin-top: 15px;">
-                Add healthy fat sources (e.g., olive oil, nuts, avocado)
+                Aggiungi una fonte di grassi
              </div>` : ''}
                 </div>
             </div>
@@ -506,25 +506,25 @@ function updateNutrientDisplay(mealIndex) {
 
     // Generate the nutrient info display
     let nutrientInfoHtml = `
-        <h4>Meal Targets:</h4>
+        <h4>Target:</h4>
         <div class="macro-targets">
             <div class="macro-target-row">
-                <span>Calories: ${Math.round(mealCalories)} kcal</span>
+                <span>Tot Kcal: ${Math.round(mealCalories)}</span>
             </div>
             <div class="macro-target-row">
-                <span>Carbs: ${Math.round(targetCarbs)}g (${Math.round(carbsPerc)}%)</span>
+                <span>Carboidrati: ${Math.round(targetCarbs)}g (${Math.round(carbsPerc)}%)</span>
             </div>
             <div class="macro-target-row">
-                <span>Protein: ${Math.round(targetProtein)}g (${Math.round(proteinPerc)}%)</span>
+                <span>Proteine: ${Math.round(targetProtein)}g (${Math.round(proteinPerc)}%)</span>
             </div>
             <div class="macro-target-row">
-                <span>Fat: ${Math.round(targetFat)}g (${Math.round(fatPerc)}%)</span>
+                <span>Grassi: ${Math.round(targetFat)}g (${Math.round(fatPerc)}%)</span>
             </div>
         </div>
     `;
 
     if (portions && portions.length > 0) {
-        nutrientInfoHtml += `<h4>Recommended Portions:</h4>`;
+        nutrientInfoHtml += `<h4>Porzioni raccomandate:</h4>`;
 
         let totalMealCarbs = 0;
         let totalMealProtein = 0;
@@ -542,12 +542,11 @@ function updateNutrientDisplay(mealIndex) {
             nutrientInfoHtml += `
                 <div class="food-summary">
                 <strong>${portion.name}</strong><br>
-                Portion: ${Math.round(portion.grams)}g (Primary: ${portion.primaryMacro})<br>
-                Provides:<br>
-                - Carbs: ${Math.round(portion.macros.carbs)}g<br>
-                - Protein: ${Math.round(portion.macros.protein)}g<br>
-                - Fat: ${Math.round(portion.macros.fat)}g<br>
-                - Calories: ${Math.round(calories)} kcal
+                Porzione: ${Math.round(portion.grams)}g (Fonte primaria: ${portion.primaryMacro})<br>
+                - Carboidrati: ${Math.round(portion.macros.carbs)}g<br>
+                - Proteine: ${Math.round(portion.macros.protein)}g<br>
+                - Grassi: ${Math.round(portion.macros.fat)}g<br>
+                - Tot Kcal: ${Math.round(calories)}
                 </div>
             `;
         });
@@ -563,7 +562,7 @@ function updateNutrientDisplay(mealIndex) {
             fat: { current: totalMealFat, target: targetFat, progress: fatProgress }
         });
     } else {
-        nutrientInfoHtml += "<p>No food selected.</p>";
+        nutrientInfoHtml += "<p>Nessun alimento selezionato.</p>";
     }
 
     document.getElementById(`nutrient_info_${mealIndex}`).innerHTML = nutrientInfoHtml;
@@ -669,9 +668,9 @@ function initializeFoodSelector(mealIndex) {
                     <div class="search-result-item">
                         <div>${food}</div>
                         <div class="macro-info">
-                            Carbs: ${Math.round(foodData.fields.Carboidrati)}g,
-                            Protein: ${Math.round(foodData.fields.Proteine)}g,
-                            Fat: ${Math.round(foodData.fields.Grassi)}g
+                            Cb: ${Math.round(foodData.fields.Carboidrati)}g | 
+                            Pr: ${Math.round(foodData.fields.Proteine)}g | 
+                            Gr: ${Math.round(foodData.fields.Grassi)}g
                         </div>
                     </div>`;
             })
@@ -722,9 +721,9 @@ function initializeFoodSelector(mealIndex) {
         foodTag.innerHTML = `
             <div>${food}</div>
             <div class="macro-info">
-                C: ${Math.round(foodData.fields.Carboidrati)}g | 
-                P: ${Math.round(foodData.fields.Proteine)}g | 
-                F: ${Math.round(foodData.fields.Grassi)}g
+                Cb: ${Math.round(foodData.fields.Carboidrati)}g | 
+                Pr: ${Math.round(foodData.fields.Proteine)}g | 
+                Gr: ${Math.round(foodData.fields.Grassi)}g
             </div>
             <span class="remove-food" data-food="${food}">×</span>
         `;

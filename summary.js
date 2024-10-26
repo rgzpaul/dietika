@@ -50,18 +50,17 @@ function displayMealPlan(data) {
     // Initialize HTML with daily summary
     let html = `
         <div class="summary-container">
-            <h2>Daily Summary</h2>
             <div class="summary-grid">
                 <div class="summary-card">
-                    <h3>Calories</h3>
+                    <h3>Calorie</h3>
                     <p>Target: ${Math.round(data.summary.totalCalories.target)} kcal</p>
-                    <p>Actual: ${Math.round(data.summary.totalCalories.actual)} kcal</p>
+                    <p>Attuali: ${Math.round(data.summary.totalCalories.actual)} kcal</p>
                 </div>
                 <div class="summary-card">
-                    <h3>Macros</h3>
-                    <p>Carbs: ${Math.round(data.summary.totalMacros.carbs)}g</p>
-                    <p>Protein: ${Math.round(data.summary.totalMacros.protein)}g</p>
-                    <p>Fat: ${Math.round(data.summary.totalMacros.fat)}g</p>
+                    <h3>Macro</h3>
+                    <p>Carboidrati: ${Math.round(data.summary.totalMacros.carbs)}g</p>
+                    <p>Proteine: ${Math.round(data.summary.totalMacros.protein)}g</p>
+                    <p>Grassi: ${Math.round(data.summary.totalMacros.fat)}g</p>
                 </div>
             </div>
         </div>
@@ -72,27 +71,27 @@ function displayMealPlan(data) {
         html += `
             <div class="meal-container">
                 <div class="meal-header">
-                <h2> <span contenteditable>Meal ${meal.mealNumber}<span> <i data-lucide="pen-line" style="height: 30px"></i> </h2>
+                <h2> <span contenteditable>Pasto n. ${meal.mealNumber}<span> <i data-lucide="pen-line" style="height: 30px"></i> </h2>
                 </div>
                 
                 <div class="macro-comparison">
                     <div>
-                        <h3>Macros</h3>
-                        <p>Carbs: ${Math.round(meal.actual.carbs)}g</p>
+                        <h3>Macro</h3>
+                        <p>Carboidrati: ${Math.round(meal.actual.carbs)}g</p>
                         <div class="progress-bar-container white">
                             <div class="progress-bar" 
                                  style="width: ${Math.round(Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100))}%; background-color: #4CAF50;">
                                 <span class="progress-text">${Math.round(Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100))}%</span>
                             </div>
                         </div>
-                        <p>Protein: ${Math.round(meal.actual.protein)}g</p>
+                        <p>Proteine: ${Math.round(meal.actual.protein)}g</p>
                         <div class="progress-bar-container white">
                             <div class="progress-bar" 
                                  style="width: ${Math.round(Math.min((meal.actual.protein / meal.targets.protein) * 100, 100))}%; background-color: #2196F3;">
                                 <span class="progress-text">${Math.round(Math.min((meal.actual.protein / meal.targets.protein) * 100, 100))}%</span>
                             </div>
                         </div>
-                        <p>Fat: ${Math.round(meal.actual.fat)}g</p>
+                        <p>Grassi: ${Math.round(meal.actual.fat)}g</p>
                         <div class="progress-bar-container white">
                             <div class="progress-bar" 
                                  style="width: ${Math.round(Math.min((meal.actual.fat / meal.targets.fat) * 100, 100))}%; background-color: #FF9800;">
@@ -105,9 +104,9 @@ function displayMealPlan(data) {
                 <table>
                     <thead>
                         <tr>
-                            <th>Food</th>
-                            <th>Portion (g)</th>
-                            <th>Calories</th>
+                            <th>Alimento</th>
+                            <th>Porzione (g)</th>
+                            <th>Calorie</th>
                         </tr>
                     </thead>
                     <tbody>

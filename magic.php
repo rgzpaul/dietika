@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meal Plan Summary</title>
+    <title>Riepilogo</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Meal Plan Summary</h1>
+        <h1>Riepilogo</h1>
         <div id="buttonContainer" class="button-container">
             <!-- This will be shown/hidden by JavaScript -->
         </div>
@@ -16,9 +16,9 @@
             <!-- Default error state that will be replaced if data exists -->
             <div class="error-container">
                 <div class="error-message">
-                    <h2>⚠️ Invalid Access</h2>
-                    <p>This page cannot be accessed directly. Please generate a meal plan from the main page first.</p>
-                    <button onclick="window.location.href='index.php'" style="margin: 0px">Go to Meal Planner</button>
+                    <h2>⚠️ Errore</h2>
+                    <p>Non è possibile accedere direttamente a questa pagina. Si prega di generare prima un piano alimentare dalla pagina principale.</p>
+                    <button onclick="window.location.href='index.php'" style="margin: 0px">Vai al Meal Planner</button>
                 </div>
             </div>
         </div>
@@ -29,7 +29,7 @@
                 if (storedData) {
                     // Show print button if we have data
                     document.getElementById('buttonContainer').innerHTML = `
-                        <button onclick="window.print()">Print</button>
+                        <button onclick="window.print()">Stampa</button>
                     `;
                 }
             });

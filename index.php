@@ -46,7 +46,7 @@ if (!isLoggedIn()) {
             <form method="post" id="loginForm">
                 <input type="text" name="username" placeholder="Username" required>
                 <input type="password" name="password" placeholder="Password" required>
-                <button type="button" onclick="submitForm()">Submit</button>
+                <button type="button" onclick="submitForm()">Accedi</button>
                 <?php if (isset($error)) echo "<p>$error</p>"; ?>
             </form>
         </div>
@@ -78,18 +78,18 @@ $cleanFoodItems = array_map(function($item) {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Macro-Based Meal Planner</title>
+    <title>Meal Planner</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Macro-Based Meal Planner</h1>
+        <h1>Meal Planner</h1>
         <form method="post" id="mealPlannerForm">
             <div class="total-inputs">
-                <label for="total_kcals">Total Calories:</label>
+                <label for="total_kcals">Totale calorie:</label>
                 <input type="number" id="total_kcals" name="total_kcals" min="1" required>
 
-                <label for="numero_di_pasti">Number of Meals:</label>
+                <label for="numero_di_pasti">Numero di pasti:</label>
                 <input type="number" id="numero_di_pasti" name="numero_di_pasti" min="1" required>
             </div>
 
@@ -99,7 +99,7 @@ $cleanFoodItems = array_map(function($item) {
             </div>
 
             <div id="inputs_container"></div>
-            <button type="submit" id="submit_button" style="display: none;">Go to Summary</button>
+            <button type="submit" id="submit_button" style="display: none;">Vai al riepilogo</button>
         </form>
 
         <script>
