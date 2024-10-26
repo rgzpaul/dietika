@@ -105,6 +105,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && 
         $mealPlan = [];
         $totalPercentage = 0;
 
+        // Retrieve original portions from form data
+        $originalPortions = json_decode($_POST['original_portions'], true);
+
         for ($i = 0; $i < $numero_di_pasti; $i++) {
             $percentage = floatval($_POST["percentage_$i"]);
             $totalPercentage += $percentage;
@@ -148,16 +151,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && 
                         $proteinPer100g = floatval($item['fields']['Proteine']);
                         $fatPer100g = floatval($item['fields']['Grassi']);
 
-                        // Calculate required grams based on macro targets
-                        $requiredGrams = [
-                            'carbs' => $carbsPer100g > 0 ? ($targetCarbs * 100) / $carbsPer100g : 0,
-                            'protein' => $proteinPer100g > 0 ? ($targetProtein * 100) / $proteinPer100g : 0,
-                            'fat' => $fatPer100g > 0 ? ($targetFat * 100) / $fatPer100g : 0
-                        ];
-
-                        // Get the limiting macro (smallest non-zero value)
-                        $validGrams = array_filter($requiredGrams, function($g) { return $g > 0; });
-                        $grams = floor(!empty($validGrams) ? min($validGrams) : 0);
+                        // Use portion from originalPortions if available, otherwise calculate
+                        $grams = isset($originalPortions[$foodItem]) 
+                            ? $originalPortions[$foodItem] 
+                            : floor(min(array_filter([
+                                'carbs' => $carbsPer100g > 0 ? ($targetCarbs * 100) / $carbsPer100g : 0,
+                                'protein' => $proteinPer100g > 0 ? ($targetProtein * 100) / $proteinPer100g : 0,
+                                'fat' => $fatPer100g > 0 ? ($targetFat * 100) / $fatPer100g : 0
+                            ], function($g) { return $g > 0; })));
 
                         // Calculate actual macros provided
                         $providedCarbs = ($carbsPer100g * $grams) / 100;
