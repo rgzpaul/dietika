@@ -62,6 +62,32 @@ button:hover {
     border-radius: 6px;
 }
 
+.summary-card h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 8px;
+}
+
+.summary-value.over-target {
+    color: #dc3545;
+}
+
+.macro-percentage {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.difference {
+    font-size: 0.9em;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.over-target .difference {
+    color: #dc3545;
+}
+
 .meal-container {
     background-color: white;
     border-radius: 8px;

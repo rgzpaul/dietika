@@ -226,10 +226,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['numero_di_pasti']) && 
         ];
 
         foreach ($mealPlan as $meal) {
-            $planTotalActual['calories'] += $meal['calories']['actual'];
-            $planTotalActual['carbs'] += $meal['actual']['carbs'];
-            $planTotalActual['protein'] += $meal['actual']['protein'];
-            $planTotalActual['fat'] += $meal['actual']['fat'];
+            foreach ($meal['foods'] as $food) {
+                $planTotalActual['calories'] += $food['macros']['calories'];
+                $planTotalActual['carbs'] += $food['macros']['carbs'];
+                $planTotalActual['protein'] += $food['macros']['protein'];
+                $planTotalActual['fat'] += $food['macros']['fat'];
+            }
         }
 
         // Add plan summary

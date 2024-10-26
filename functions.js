@@ -1,8 +1,9 @@
 // Global Variables
+
 var isSubmitting = false;
 let mealValidity = [];
 
-// Core initialization
+// Core Initialization & Event Handlers
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('mealPlannerForm');
@@ -11,48 +12,150 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 1. Utility Functions (Used across multiple other functions)
+function handleFormSubmit(event) {
+    event.preventDefault();
+    isSubmitting = true;
+    
+    const numMeals = parseInt(document.getElementById('numero_di_pasti').value, 10);
+    let invalidMeals = [];
+    let totalPercentage = 0;
 
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
+    for (let i = 0; i < numMeals; i++) {
+        const carbsPerc = parseFloat(document.getElementById(`meal_carbs_${i}`).value) || 0;
+        const proteinPerc = parseFloat(document.getElementById(`meal_protein_${i}`).value) || 0;
+        const fatPerc = parseFloat(document.getElementById(`meal_fat_${i}`).value) || 0;
+        const macroTotal = carbsPerc + proteinPerc + fatPerc;
+
+        const mealPercentage = parseFloat(document.getElementById(`percentage_${i}`).value) || 0;
+        totalPercentage += mealPercentage;
+
+        if (Math.abs(macroTotal - 100) > 0.01) {
+            invalidMeals.push(`Meal ${i + 1} (Macro Total: ${macroTotal.toFixed(2)}%)`);
+        }
+    }
+
+    let errorMessage = '';
+
+    if (invalidMeals.length > 0) {
+        errorMessage = `Please ensure all meals have macro percentages summing to 100%.\nInvalid Meals:\n- ${invalidMeals.join('\n- ')}`;
+    }
+
+    if (Math.abs(totalPercentage - 100) > 0.01) {
+        errorMessage += `${errorMessage ? '\n\n' : ''}Total meal distribution must equal 100% (current: ${totalPercentage.toFixed(2)}%)`;
+    }
+
+    if (errorMessage) {
+        alert(errorMessage);
+        isSubmitting = false;
+        return;
+    }
+
+    // Submit form normally to get the JSON response
+    fetch(this.action, {
+        method: 'POST',
+        body: new FormData(this)
+    })
+    .then(response => response.text())
+    .then(text => {
+        // Extract the JSON data from the script tag in the response
+        const match = text.match(/const mealPlanJson = (\{.*?\});/s);
+        if (match) {
+            const mealPlanData = JSON.parse(match[1]);
+            
+            // Store the data in sessionStorage
+            sessionStorage.setItem('mealPlanData', JSON.stringify(mealPlanData));
+            
+            // Open magic.php in a new tab
+            window.open('magic.php', '_blank');
+        } else {
+            throw new Error('Could not extract meal plan data from response');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while processing the meal plan.');
+    })
+    .finally(() => {
+        isSubmitting = false;
+    });
+}
+
+function generateInputs() {
+    const numMeals = document.getElementById('numero_di_pasti').value;
+    const container = document.getElementById('inputs_container');
+    container.innerHTML = '';
+    mealValidity = Array(numMeals).fill(true);
+
+    for (let i = 0; i < numMeals; i++) {
+        const mealDiv = document.createElement('div');
+        mealDiv.classList.add('meal-input');
+        mealDiv.innerHTML = `
+            <h3>Meal ${i + 1}</h3>
+            <label for="percentage_${i}">Meal Percentage (%):</label>
+            <input type="number" id="percentage_${i}" name="percentage_${i}" required 
+                   min="0" max="100" data-meal-index="${i}">
+        
+            <div class="meal-macro-distribution">
+                <h4>Meal Macro Distribution</h4>
+                <div class="macro-input-group">
+                    <label for="meal_carbs_${i}">Carbs (%):</label>
+                    <input type="number" id="meal_carbs_${i}" name="meal_carbs_${i}" 
+                           min="0" max="100" required value="40"
+                           data-meal-index="${i}">
+                </div>
+                <div class="macro-input-group">
+                    <label for="meal_protein_${i}">Protein (%):</label>
+                    <input type="number" id="meal_protein_${i}" name="meal_protein_${i}" 
+                           min="0" max="100" required value="30"
+                           data-meal-index="${i}">
+                </div>
+                <div class="macro-input-group">
+                    <label for="meal_fat_${i}">Fat (%):</label>
+                    <input type="number" id="meal_fat_${i}" name="meal_fat_${i}" 
+                           min="0" max="100" required value="30"
+                           data-meal-index="${i}">
+                </div>
+            </div>
+            
+            <label for="food_search_${i}">Search Foods:</label>
+            <div class="food-selector" id="food_selector_${i}">
+                <div class="search-container">
+                    <input type="text" id="food_search_${i}" 
+                           class="food-search" placeholder="Search foods..."
+                           data-meal-index="${i}">
+                    <div class="search-results" id="search_results_${i}"></div>
+                </div>
+                <div class="selected-foods" id="selected_foods_${i}"></div>
+                <div id="food_items_container_${i}"></div> <!-- Container for hidden inputs -->
+            </div>
+            <div id="macro_error_${i}" class="error" style="display: none;"></div>
+            <div id="nutrient_info_${i}" class="nutrient-info" style="display: block;"></div>
+        `;
+        container.appendChild(mealDiv);
+
+        // Initialize food selector
+        initializeFoodSelector(i);
+
+        // Attach event listeners
+        const percentageInput = mealDiv.querySelector(`#percentage_${i}`);
+        const carbsInput = mealDiv.querySelector(`#meal_carbs_${i}`);
+        const proteinInput = mealDiv.querySelector(`#meal_protein_${i}`);
+        const fatInput = mealDiv.querySelector(`#meal_fat_${i}`);
+
+        const updateHandler = () => {
+            const isValid = validateMealMacros(i);
+            if (isValid) {
+                updateNutrientDisplay(i);
+            }
         };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
 
-function determinePrimaryMacro(carbs, protein, fat) {
-    const total = carbs + protein + fat;
-    const ratios = {
-        carbs: carbs / total,
-        protein: protein / total,
-        fat: fat / total
-    };
-
-    if (ratios.carbs > 0.5 || (ratios.carbs > ratios.protein * 1.5 && ratios.carbs > ratios.fat * 1.5)) {
-        return 'carbs';
-    }
-    if (ratios.protein > 0.5 || (ratios.protein > ratios.carbs * 1.5 && ratios.protein > ratios.fat * 1.5)) {
-        return 'protein';
-    }
-    if (ratios.fat > 0.5 || (ratios.fat > ratios.carbs * 1.5 && ratios.fat > ratios.protein * 1.5)) {
-        return 'fat';
+        percentageInput.addEventListener('input', updateHandler);
+        carbsInput.addEventListener('input', updateHandler);
+        proteinInput.addEventListener('input', updateHandler);
+        fatInput.addEventListener('input', updateHandler);
     }
 
-    return Object.entries(ratios).reduce((a, b) => a[1] > b[1] ? a : b)[0];
-}
-
-// 2. UI State Management
-
-function toggleSubmitButton() {
-    const submitButton = document.getElementById('submit_button');
-    const allValid = mealValidity.length > 0 && mealValidity.every(valid => valid === true);
-    submitButton.disabled = !allValid;
-    submitButton.style.display = allValid ? 'block' : 'none';
+    toggleSubmitButton();
 }
 
 function safeRefresh() {
@@ -73,85 +176,7 @@ function safeRefresh() {
 
     document.getElementById('total_kcals').focus();
 }
-
-// 3. Food Options and Data Functions
-
-function getFoodOptions() {
-    if (!foodItems || !foodItems.length) {
-        console.warn('No food items available');
-        return [];
-    }
-    return foodItems.map(item => item.fields.Alimento);
-}
-
-function getFoodDataByName(foodName) {
-    if (!foodItems || !foodItems.length) {
-        console.warn('No food items available');
-        return null;
-    }
-    return foodItems.find(item => item.fields.Alimento === foodName);
-}
-
-function calculateInitialDistribution({ foods, targets }) {
-    const distribution = {
-        carbs: {},
-        protein: {},
-        fat: {}
-    };
-
-    Object.entries(targets).forEach(([macro, target]) => {
-        const specializedFoods = foods[macro];
-        if (specializedFoods.length === 0) {
-            const allFoods = [...foods.carbs, ...foods.protein, ...foods.fat];
-            allFoods.forEach(food => {
-                distribution[macro][food.name] = target / allFoods.length;
-            });
-        } else {
-            const totalRatio = specializedFoods.reduce((sum, food) =>
-                sum + food.macroRatios[macro], 0);
-
-            specializedFoods.forEach(food => {
-                distribution[macro][food.name] =
-                    (target * food.macroRatios[macro]) / totalRatio;
-            });
-        }
-    });
-
-    return distribution;
-}
-
-function calculateOptimalPortions(foodProfiles, distribution) {
-    return foodProfiles.map(food => {
-        const requiredGrams = {
-            carbs: distribution.carbs[food.name] ?
-                (distribution.carbs[food.name] * 100) / food.macrosper100g.carbs : 0,
-            protein: distribution.protein[food.name] ?
-                (distribution.protein[food.name] * 100) / food.macrosper100g.protein : 0,
-            fat: distribution.fat[food.name] ?
-                (distribution.fat[food.name] * 100) / food.macrosper100g.fat : 0
-        };
-
-        const limitingGrams = Math.min(
-            ...Object.values(requiredGrams)
-                .filter(g => g > 0 && isFinite(g))
-        );
-
-        const grams = Math.floor(limitingGrams || 0);
-
-        return {
-            name: food.name,
-            grams: grams,
-            macros: {
-                carbs: (food.macrosper100g.carbs * grams) / 100,
-                protein: (food.macrosper100g.protein * grams) / 100,
-                fat: (food.macrosper100g.fat * grams) / 100
-            },
-            primaryMacro: food.primaryMacro
-        };
-    });
-}
-
-// 4. Validation Functions
+// UI Validation & Display Functions
 
 function validateMealMacros(mealIndex) {
     if (isSubmitting) return;
@@ -224,7 +249,13 @@ function validateMealMacros(mealIndex) {
     return mealValidity[mealIndex];
 }
 
-// Enhanced toggle submit button function
+function toggleSubmitButton() {
+    const submitButton = document.getElementById('submit_button');
+    const allValid = mealValidity.length > 0 && mealValidity.every(valid => valid === true);
+    submitButton.disabled = !allValid;
+    submitButton.style.display = allValid ? 'block' : 'none';
+}
+
 function toggleSubmitButton() {
     const submitButton = document.getElementById('submit_button');
     const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
@@ -263,38 +294,6 @@ function toggleSubmitButton() {
     submitButton.disabled = !allValid;
     submitButton.style.display = allValid ? 'block' : 'none';
 }
-
-// Update existing event listeners to trigger validation
-function generateInputs() {
-    // ... existing code ...
-
-    // Add these lines at the end of the function
-    mealValidity = Array(numMeals).fill(false); // Initialize all as invalid
-    toggleSubmitButton(); // Check initial state
-}
-
-// Update initialization
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('mealPlannerForm');
-    if (form) {
-        form.addEventListener('submit', handleFormSubmit);
-    }
-
-    // Add listeners for total calories and number of meals
-    document.getElementById('total_kcals').addEventListener('input', () => {
-        if (mealValidity.length > 0) {
-            mealValidity.forEach((_, index) => validateMealMacros(index));
-        }
-    });
-
-    document.getElementById('numero_di_pasti').addEventListener('input', () => {
-        if (mealValidity.length > 0) {
-            mealValidity.forEach((_, index) => validateMealMacros(index));
-        }
-    });
-});
-
-// 5. Display Generation Functions
 
 function generateProgressBars({ carbs, protein, fat }) {
     return `
@@ -498,7 +497,7 @@ function updateNutrientDisplay(mealIndex) {
     document.getElementById(`nutrient_info_${mealIndex}`).innerHTML = nutrientInfoHtml;
 }
 
-// 6. Component Initialization Functions
+// Food Selection System
 
 function initializeFoodSelector(mealIndex) {
     if (!foodItems || !foodItems.length) {
@@ -697,148 +696,304 @@ function initializeFoodSelector(mealIndex) {
     }
 }
 
-function handleFormSubmit(event) {
-    event.preventDefault();
-    isSubmitting = true;
-    
-    const numMeals = parseInt(document.getElementById('numero_di_pasti').value, 10);
-    let invalidMeals = [];
-    let totalPercentage = 0;
-
-    for (let i = 0; i < numMeals; i++) {
-        const carbsPerc = parseFloat(document.getElementById(`meal_carbs_${i}`).value) || 0;
-        const proteinPerc = parseFloat(document.getElementById(`meal_protein_${i}`).value) || 0;
-        const fatPerc = parseFloat(document.getElementById(`meal_fat_${i}`).value) || 0;
-        const macroTotal = carbsPerc + proteinPerc + fatPerc;
-
-        const mealPercentage = parseFloat(document.getElementById(`percentage_${i}`).value) || 0;
-        totalPercentage += mealPercentage;
-
-        if (Math.abs(macroTotal - 100) > 0.01) {
-            invalidMeals.push(`Meal ${i + 1} (Macro Total: ${macroTotal.toFixed(2)}%)`);
-        }
-    }
-
-    let errorMessage = '';
-
-    if (invalidMeals.length > 0) {
-        errorMessage = `Please ensure all meals have macro percentages summing to 100%.\nInvalid Meals:\n- ${invalidMeals.join('\n- ')}`;
-    }
-
-    if (Math.abs(totalPercentage - 100) > 0.01) {
-        errorMessage += `${errorMessage ? '\n\n' : ''}Total meal distribution must equal 100% (current: ${totalPercentage.toFixed(2)}%)`;
-    }
-
-    if (errorMessage) {
-        alert(errorMessage);
-        isSubmitting = false;
-        return;
-    }
-
-    // Submit form normally to get the JSON response
-    fetch(this.action, {
-        method: 'POST',
-        body: new FormData(this)
-    })
-    .then(response => response.text())
-    .then(text => {
-        // Extract the JSON data from the script tag in the response
-        const match = text.match(/const mealPlanJson = (\{.*?\});/s);
-        if (match) {
-            const mealPlanData = JSON.parse(match[1]);
-            
-            // Store the data in sessionStorage
-            sessionStorage.setItem('mealPlanData', JSON.stringify(mealPlanData));
-            
-            // Open magic.php in a new tab
-            window.open('magic.php', '_blank');
-        } else {
-            throw new Error('Could not extract meal plan data from response');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while processing the meal plan.');
-    })
-    .finally(() => {
-        isSubmitting = false;
-    });
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
-function generateInputs() {
-    const numMeals = document.getElementById('numero_di_pasti').value;
-    const container = document.getElementById('inputs_container');
-    container.innerHTML = '';
-    mealValidity = Array(numMeals).fill(true);
+// Data Access Functions
 
-    for (let i = 0; i < numMeals; i++) {
-        const mealDiv = document.createElement('div');
-        mealDiv.classList.add('meal-input');
-        mealDiv.innerHTML = `
-            <h3>Meal ${i + 1}</h3>
-            <label for="percentage_${i}">Meal Percentage (%):</label>
-            <input type="number" id="percentage_${i}" name="percentage_${i}" required 
-                   min="0" max="100" data-meal-index="${i}">
-        
-            <div class="meal-macro-distribution">
-                <h4>Meal Macro Distribution</h4>
-                <div class="macro-input-group">
-                    <label for="meal_carbs_${i}">Carbs (%):</label>
-                    <input type="number" id="meal_carbs_${i}" name="meal_carbs_${i}" 
-                           min="0" max="100" required value="40"
-                           data-meal-index="${i}">
-                </div>
-                <div class="macro-input-group">
-                    <label for="meal_protein_${i}">Protein (%):</label>
-                    <input type="number" id="meal_protein_${i}" name="meal_protein_${i}" 
-                           min="0" max="100" required value="30"
-                           data-meal-index="${i}">
-                </div>
-                <div class="macro-input-group">
-                    <label for="meal_fat_${i}">Fat (%):</label>
-                    <input type="number" id="meal_fat_${i}" name="meal_fat_${i}" 
-                           min="0" max="100" required value="30"
-                           data-meal-index="${i}">
-                </div>
-            </div>
-            
-            <label for="food_search_${i}">Search Foods:</label>
-            <div class="food-selector" id="food_selector_${i}">
-                <div class="search-container">
-                    <input type="text" id="food_search_${i}" 
-                           class="food-search" placeholder="Search foods..."
-                           data-meal-index="${i}">
-                    <div class="search-results" id="search_results_${i}"></div>
-                </div>
-                <div class="selected-foods" id="selected_foods_${i}"></div>
-                <div id="food_items_container_${i}"></div> <!-- Container for hidden inputs -->
-            </div>
-            <div id="macro_error_${i}" class="error" style="display: none;"></div>
-            <div id="nutrient_info_${i}" class="nutrient-info" style="display: block;"></div>
-        `;
-        container.appendChild(mealDiv);
+function getFoodOptions() {
+    if (!foodItems || !foodItems.length) {
+        console.warn('No food items available');
+        return [];
+    }
+    return foodItems.map(item => item.fields.Alimento);
+}
 
-        // Initialize food selector
-        initializeFoodSelector(i);
+function getFoodDataByName(foodName) {
+    if (!foodItems || !foodItems.length) {
+        console.warn('No food items available');
+        return null;
+    }
+    return foodItems.find(item => item.fields.Alimento === foodName);
+}
 
-        // Attach event listeners
-        const percentageInput = mealDiv.querySelector(`#percentage_${i}`);
-        const carbsInput = mealDiv.querySelector(`#meal_carbs_${i}`);
-        const proteinInput = mealDiv.querySelector(`#meal_protein_${i}`);
-        const fatInput = mealDiv.querySelector(`#meal_fat_${i}`);
+// Nutritional Analysis Functions
 
-        const updateHandler = () => {
-            const isValid = validateMealMacros(i);
-            if (isValid) {
-                updateNutrientDisplay(i);
-            }
-        };
+function calculateCalories(carbs, protein, fat) {
+    return (carbs * 4) + (protein * 4) + (fat * 9);
+}
 
-        percentageInput.addEventListener('input', updateHandler);
-        carbsInput.addEventListener('input', updateHandler);
-        proteinInput.addEventListener('input', updateHandler);
-        fatInput.addEventListener('input', updateHandler);
+function analyzeFoodProfile(food) {
+    const { carbs, protein, fat } = food.macrosper100g;
+    const total = carbs + protein + fat;
+    
+    // Calculate basic ratios
+    const baseRatios = {
+        carbs: carbs / total,
+        protein: protein / total,
+        fat: fat / total
+    };
+
+    // Calculate caloric contribution
+    const calories = calculateCalories(carbs, protein, fat);
+    const caloricRatios = {
+        carbs: (carbs * 4) / calories,
+        protein: (protein * 4) / calories,
+        fat: (fat * 9) / calories
+    };
+
+    // Calculate density scores (grams of macro per calorie)
+    const density = {
+        carbs: carbs / calories,
+        protein: protein / calories,
+        fat: fat / calories
+    };
+
+    // Combine metrics into a final score for each macro
+    const scores = {
+        carbs: (baseRatios.carbs * 0.4) + (caloricRatios.carbs * 0.4) + (density.carbs * 0.2),
+        protein: (baseRatios.protein * 0.4) + (caloricRatios.protein * 0.4) + (density.protein * 0.2),
+        fat: (baseRatios.fat * 0.4) + (caloricRatios.fat * 0.4) + (density.fat * 0.2)
+    };
+
+    // Determine primary and secondary macros
+    const sortedScores = Object.entries(scores)
+        .sort(([,a], [,b]) => b - a);
+
+    return {
+        name: food.name,
+        macrosper100g: food.macrosper100g,
+        primaryMacro: sortedScores[0][0],
+        secondaryMacro: sortedScores[1][0],
+        scores: scores,
+        caloriesper100g: calories,
+        density: density
+    };
+}
+
+function determinePrimaryMacro(carbs, protein, fat) {
+    const total = carbs + protein + fat;
+    const ratios = {
+        carbs: carbs / total,
+        protein: protein / total,
+        fat: fat / total
+    };
+
+    if (ratios.carbs > 0.5 || (ratios.carbs > ratios.protein * 1.5 && ratios.carbs > ratios.fat * 1.5)) {
+        return 'carbs';
+    }
+    if (ratios.protein > 0.5 || (ratios.protein > ratios.carbs * 1.5 && ratios.protein > ratios.fat * 1.5)) {
+        return 'protein';
+    }
+    if (ratios.fat > 0.5 || (ratios.fat > ratios.carbs * 1.5 && ratios.fat > ratios.protein * 1.5)) {
+        return 'fat';
     }
 
-    toggleSubmitButton();
+    return Object.entries(ratios).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+}
+
+// Distribution Calculation Functions
+
+function calculateOptimalDistribution(foods, targets) {
+    // Analyze all foods
+    const foodProfiles = foods.map(analyzeFoodProfile);
+    
+    // Group foods by primary and secondary macros
+    const groupedFoods = {
+        carbs: foodProfiles.filter(f => f.primaryMacro === 'carbs'),
+        protein: foodProfiles.filter(f => f.primaryMacro === 'protein'),
+        fat: foodProfiles.filter(f => f.primaryMacro === 'fat'),
+        secondary: {
+            carbs: foodProfiles.filter(f => f.secondaryMacro === 'carbs'),
+            protein: foodProfiles.filter(f => f.secondaryMacro === 'protein'),
+            fat: foodProfiles.filter(f => f.secondaryMacro === 'fat')
+        }
+    };
+
+    // Initial distribution based on primary macro foods
+    const distribution = calculatePrimaryDistribution(groupedFoods, targets);
+    
+    // Adjust for gaps using secondary macro foods
+    const adjustedDistribution = adjustDistributionWithSecondary(distribution, groupedFoods, targets);
+    
+    // Final optimization
+    return optimizeDistribution(adjustedDistribution, foodProfiles, targets);
+}
+
+function calculatePrimaryDistribution(groupedFoods, targets) {
+    const distribution = {};
+    
+    Object.entries(targets).forEach(([macro, target]) => {
+        const primaryFoods = groupedFoods[macro];
+        
+        if (primaryFoods.length === 0) {
+            return; // Will be handled in secondary distribution
+        }
+
+        // Weight distribution by macro density and score
+        const totalScore = primaryFoods.reduce((sum, food) => 
+            sum + (food.scores[macro] * food.density[macro]), 0);
+
+        primaryFoods.forEach(food => {
+            const weight = (food.scores[macro] * food.density[macro]) / totalScore;
+            distribution[food.name] = {
+                grams: (target * weight * 100) / food.macrosper100g[macro],
+                contribution: {}
+            };
+        });
+    });
+
+    return distribution;
+}
+
+function adjustDistributionWithSecondary(distribution, groupedFoods, targets) {
+    // Calculate current macro totals
+    const currentTotals = calculateMacroTotals(distribution, groupedFoods.all);
+    
+    // Find gaps in macro targets
+    const gaps = {
+        carbs: targets.carbs - currentTotals.carbs,
+        protein: targets.protein - currentTotals.protein,
+        fat: targets.fat - currentTotals.fat
+    };
+
+    // Fill gaps using secondary macro foods
+    Object.entries(gaps).forEach(([macro, gap]) => {
+        if (gap <= 0) return;
+
+        const secondaryFoods = groupedFoods.secondary[macro];
+        if (secondaryFoods.length === 0) return;
+
+        // Distribute remaining targets among secondary foods
+        const totalSecondaryScore = secondaryFoods.reduce((sum, food) => 
+            sum + food.scores[macro], 0);
+
+        secondaryFoods.forEach(food => {
+            const weight = food.scores[macro] / totalSecondaryScore;
+            const additionalGrams = (gap * weight * 100) / food.macrosper100g[macro];
+            
+            if (!distribution[food.name]) {
+                distribution[food.name] = { grams: 0, contribution: {} };
+            }
+            distribution[food.name].grams += additionalGrams;
+        });
+    });
+
+    return distribution;
+}
+
+function optimizeDistribution(distribution, foodProfiles, targets) {
+    const maxIterations = 10;
+    let currentIteration = 0;
+    let bestDistribution = distribution;
+    let bestError = calculateError(distribution, foodProfiles, targets);
+
+    while (currentIteration < maxIterations) {
+        // Try small adjustments to portions
+        const adjustedDistribution = tryAdjustments(bestDistribution, foodProfiles, targets);
+        const newError = calculateError(adjustedDistribution, foodProfiles, targets);
+
+        if (newError < bestError) {
+            bestDistribution = adjustedDistribution;
+            bestError = newError;
+        }
+
+        currentIteration++;
+    }
+
+    // Round final portions to practical amounts
+    return roundPortions(bestDistribution);
+}
+
+// Distribution Helper Functions
+
+function calculateError(distribution, foodProfiles, targets) {
+    const totals = calculateMacroTotals(distribution, foodProfiles);
+    
+    return Math.sqrt(
+        Math.pow(totals.carbs - targets.carbs, 2) +
+        Math.pow(totals.protein - targets.protein, 2) +
+        Math.pow(totals.fat - targets.fat, 2)
+    );
+}
+
+function roundPortions(distribution) {
+    // Round to nearest 5g or 10g depending on portion size
+    return Object.fromEntries(
+        Object.entries(distribution).map(([name, data]) => {
+            const roundingUnit = data.grams >= 100 ? 10 : 5;
+            const roundedGrams = Math.round(data.grams / roundingUnit) * roundingUnit;
+            return [name, { ...data, grams: roundedGrams }];
+        })
+    );
+}
+
+// Legacy Distribution Functions
+
+function calculateInitialDistribution({ foods, targets }) {
+    const distribution = {
+        carbs: {},
+        protein: {},
+        fat: {}
+    };
+
+    Object.entries(targets).forEach(([macro, target]) => {
+        const specializedFoods = foods[macro];
+        if (specializedFoods.length === 0) {
+            const allFoods = [...foods.carbs, ...foods.protein, ...foods.fat];
+            allFoods.forEach(food => {
+                distribution[macro][food.name] = target / allFoods.length;
+            });
+        } else {
+            const totalRatio = specializedFoods.reduce((sum, food) =>
+                sum + food.macroRatios[macro], 0);
+
+            specializedFoods.forEach(food => {
+                distribution[macro][food.name] =
+                    (target * food.macroRatios[macro]) / totalRatio;
+            });
+        }
+    });
+
+    return distribution;
+}
+
+function calculateOptimalPortions(foodProfiles, distribution) {
+    return foodProfiles.map(food => {
+        const requiredGrams = {
+            carbs: distribution.carbs[food.name] ?
+                (distribution.carbs[food.name] * 100) / food.macrosper100g.carbs : 0,
+            protein: distribution.protein[food.name] ?
+                (distribution.protein[food.name] * 100) / food.macrosper100g.protein : 0,
+            fat: distribution.fat[food.name] ?
+                (distribution.fat[food.name] * 100) / food.macrosper100g.fat : 0
+        };
+
+        const limitingGrams = Math.min(
+            ...Object.values(requiredGrams)
+                .filter(g => g > 0 && isFinite(g))
+        );
+
+        const grams = Math.floor(limitingGrams || 0);
+
+        return {
+            name: food.name,
+            grams: grams,
+            macros: {
+                carbs: (food.macrosper100g.carbs * grams) / 100,
+                protein: (food.macrosper100g.protein * grams) / 100,
+                fat: (food.macrosper100g.fat * grams) / 100
+            },
+            primaryMacro: food.primaryMacro
+        };
+    });
 }
