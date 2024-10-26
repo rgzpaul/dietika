@@ -313,13 +313,6 @@ function validateMealMacros(mealIndex) {
 
 function toggleSubmitButton() {
     const submitButton = document.getElementById('submit_button');
-    const allValid = mealValidity.length > 0 && mealValidity.every(valid => valid === true);
-    submitButton.disabled = !allValid;
-    submitButton.style.display = allValid ? 'block' : 'none';
-}
-
-function toggleSubmitButton() {
-    const submitButton = document.getElementById('submit_button');
     const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
     const numMeals = parseInt(document.getElementById('numero_di_pasti').value) || 0;
 
@@ -797,54 +790,6 @@ function getFoodDataByName(foodName) {
 
 function calculateCalories(carbs, protein, fat) {
     return (carbs * 4) + (protein * 4) + (fat * 9);
-}
-
-function analyzeFoodProfile(food) {
-    const { carbs, protein, fat } = food.macrosper100g;
-    const total = carbs + protein + fat;
-
-    // Calculate basic ratios
-    const baseRatios = {
-        carbs: carbs / total,
-        protein: protein / total,
-        fat: fat / total
-    };
-
-    // Calculate caloric contribution
-    const calories = calculateCalories(carbs, protein, fat);
-    const caloricRatios = {
-        carbs: (carbs * 4) / calories,
-        protein: (protein * 4) / calories,
-        fat: (fat * 9) / calories
-    };
-
-    // Calculate density scores (grams of macro per calorie)
-    const density = {
-        carbs: carbs / calories,
-        protein: protein / calories,
-        fat: fat / calories
-    };
-
-    // Combine metrics into a final score for each macro
-    const scores = {
-        carbs: (baseRatios.carbs * 0.4) + (caloricRatios.carbs * 0.4) + (density.carbs * 0.2),
-        protein: (baseRatios.protein * 0.4) + (caloricRatios.protein * 0.4) + (density.protein * 0.2),
-        fat: (baseRatios.fat * 0.4) + (caloricRatios.fat * 0.4) + (density.fat * 0.2)
-    };
-
-    // Determine primary and secondary macros
-    const sortedScores = Object.entries(scores)
-        .sort(([, a], [, b]) => b - a);
-
-    return {
-        name: food.name,
-        macrosper100g: food.macrosper100g,
-        primaryMacro: sortedScores[0][0],
-        secondaryMacro: sortedScores[1][0],
-        scores: scores,
-        caloriesper100g: calories,
-        density: density
-    };
 }
 
 function determinePrimaryMacro(carbs, protein, fat) {
