@@ -34,7 +34,7 @@ async function parseClipboard() {
 
 // Function to create a progress bar based on actual vs target values
 function createProgressBar(actual, target) {
-    const percentage = Math.min((actual / target) * 100, 100).toFixed(1);
+    const percentage = Math.min(Math.round((actual / target) * 100), 100);
     const isOverTarget = actual > target;
     return `
         <div class="progress-bar">
@@ -54,14 +54,14 @@ function displayMealPlan(data) {
             <div class="summary-grid">
                 <div class="summary-card">
                     <h3>Calories</h3>
-                    <p>Target: ${data.summary.totalCalories.target} kcal</p>
-                    <p>Actual: ${data.summary.totalCalories.actual.toFixed(1)} kcal</p>
+                    <p>Target: ${Math.round(data.summary.totalCalories.target)} kcal</p>
+                    <p>Actual: ${Math.round(data.summary.totalCalories.actual)} kcal</p>
                 </div>
                 <div class="summary-card">
                     <h3>Macros</h3>
-                    <p>Carbs: ${data.summary.totalMacros.carbs.toFixed(1)}g</p>
-                    <p>Protein: ${data.summary.totalMacros.protein.toFixed(1)}g</p>
-                    <p>Fat: ${data.summary.totalMacros.fat.toFixed(1)}g</p>
+                    <p>Carbs: ${Math.round(data.summary.totalMacros.carbs)}g</p>
+                    <p>Protein: ${Math.round(data.summary.totalMacros.protein)}g</p>
+                    <p>Fat: ${Math.round(data.summary.totalMacros.fat)}g</p>
                 </div>
             </div>
         </div>
@@ -78,25 +78,25 @@ function displayMealPlan(data) {
                 <div class="macro-comparison">
                     <div>
                         <h3>Macros</h3>
-                        <p>Carbs: ${meal.actual.carbs}g</p>
+                        <p>Carbs: ${Math.round(meal.actual.carbs)}g</p>
                         <div class="progress-bar-container white">
                             <div class="progress-bar" 
-                                 style="width: ${Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100)}%; background-color: #4CAF50;">
-                                <span class="progress-text">${Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100).toFixed(1)}%</span>
+                                 style="width: ${Math.round(Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100))}%; background-color: #4CAF50;">
+                                <span class="progress-text">${Math.round(Math.min((meal.actual.carbs / meal.targets.carbs) * 100, 100))}%</span>
                             </div>
                         </div>
-                        <p>Protein: ${meal.actual.protein}g</p>
+                        <p>Protein: ${Math.round(meal.actual.protein)}g</p>
                         <div class="progress-bar-container white">
                             <div class="progress-bar" 
-                                 style="width: ${Math.min((meal.actual.protein / meal.targets.protein) * 100, 100)}%; background-color: #2196F3;">
-                                <span class="progress-text">${Math.min((meal.actual.protein / meal.targets.protein) * 100, 100).toFixed(1)}%</span>
+                                 style="width: ${Math.round(Math.min((meal.actual.protein / meal.targets.protein) * 100, 100))}%; background-color: #2196F3;">
+                                <span class="progress-text">${Math.round(Math.min((meal.actual.protein / meal.targets.protein) * 100, 100))}%</span>
                             </div>
                         </div>
-                        <p>Fat: ${meal.actual.fat}g</p>
+                        <p>Fat: ${Math.round(meal.actual.fat)}g</p>
                         <div class="progress-bar-container white">
                             <div class="progress-bar" 
-                                 style="width: ${Math.min((meal.actual.fat / meal.targets.fat) * 100, 100)}%; background-color: #FF9800;">
-                                <span class="progress-text">${Math.min((meal.actual.fat / meal.targets.fat) * 100, 100).toFixed(1)}%</span>
+                                 style="width: ${Math.round(Math.min((meal.actual.fat / meal.targets.fat) * 100, 100))}%; background-color: #FF9800;">
+                                <span class="progress-text">${Math.round(Math.min((meal.actual.fat / meal.targets.fat) * 100, 100))}%</span>
                             </div>
                         </div>
                     </div>
@@ -118,8 +118,8 @@ function displayMealPlan(data) {
             html += `
                 <tr>
                     <td>${food.food}</td>
-                    <td>${food.portion}</td>
-                    <td>${food.macros.calories}</td>
+                    <td>${Math.round(food.portion)}</td>
+                    <td>${Math.round(food.macros.calories)}</td>
                 </tr>
             `;
         });

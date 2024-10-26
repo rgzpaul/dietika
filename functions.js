@@ -15,26 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleFormSubmit(event) {
     event.preventDefault();
     isSubmitting = true;
-    
+
     // Collect form data
     const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
     const numMeals = parseInt(document.getElementById('numero_di_pasti').value, 10);
     let invalidMeals = [];
     let totalPercentage = 0;
-    
+
     // Store original form portions for comparison
     const formPortions = {};
-    
+
     // Validate meals and collect portions
     for (let i = 0; i < numMeals; i++) {
         const carbsPerc = parseFloat(document.getElementById(`meal_carbs_${i}`).value) || 0;
         const proteinPerc = parseFloat(document.getElementById(`meal_protein_${i}`).value) || 0;
         const fatPerc = parseFloat(document.getElementById(`meal_fat_${i}`).value) || 0;
         const macroTotal = carbsPerc + proteinPerc + fatPerc;
-        
+
         const mealPercentage = parseFloat(document.getElementById(`percentage_${i}`).value) || 0;
         totalPercentage += mealPercentage;
-        
+
         // Collect portions from selected foods
         const hiddenInputContainer = document.getElementById(`food_items_container_${i}`);
         const selectedFoods = hiddenInputContainer.querySelectorAll(`input[name="food_items_${i}[]"]`);
@@ -42,7 +42,7 @@ function handleFormSubmit(event) {
             const foodName = input.value;
             const nutrientInfo = document.getElementById(`nutrient_info_${i}`);
             const foodSummaries = nutrientInfo.querySelectorAll('.food-summary');
-            
+
             foodSummaries.forEach(summary => {
                 if (summary.querySelector('strong').textContent === foodName) {
                     const portionMatch = summary.textContent.match(/Portion: (\d+)g/);
@@ -57,89 +57,89 @@ function handleFormSubmit(event) {
             invalidMeals.push(`Meal ${i + 1} (Macro Total: ${macroTotal.toFixed(2)}%)`);
         }
     }
-    
+
     // Validate meal distributions
     let errorMessage = '';
-    
+
     if (invalidMeals.length > 0) {
         errorMessage = `Please ensure all meals have macro percentages summing to 100%.\nInvalid Meals:\n- ${invalidMeals.join('\n- ')}`;
     }
-    
+
     if (Math.abs(totalPercentage - 100) > 0.01) {
         errorMessage += `${errorMessage ? '\n\n' : ''}Total meal distribution must equal 100% (current: ${totalPercentage.toFixed(2)}%)`;
     }
-    
+
     if (errorMessage) {
         alert(errorMessage);
         isSubmitting = false;
         return;
     }
-    
+
     // Enhanced form submission with portion tracking
     const formData = new FormData(this);
     formData.append('original_portions', JSON.stringify(formPortions));
-    
+
     // Submit form and handle response
     fetch(this.action, {
         method: 'POST',
         body: formData
     })
-    .then(response => response.text())
-    .then(text => {
-        // Extract the JSON data from the script tag in the response
-        const match = text.match(/const mealPlanJson = (\{.*?\});/s);
-        if (match) {
-            const mealPlanData = JSON.parse(match[1]);
-            
-            // Compare portions
-            const summaryPortions = {};
-            mealPlanData.meals.forEach(meal => {
-                meal.foods.forEach(food => {
-                    summaryPortions[food.food] = (summaryPortions[food.food] || 0) + food.portion;
-                });
-            });
-            
-            // Log any discrepancies
-            const discrepancies = [];
-            Object.keys({ ...formPortions, ...summaryPortions }).forEach(food => {
-                const formAmount = formPortions[food] || 0;
-                const summaryAmount = summaryPortions[food] || 0;
-                if (Math.abs(formAmount - summaryAmount) > 0.1) {
-                    discrepancies.push({
-                        food,
-                        formAmount,
-                        summaryAmount,
-                        difference: Math.abs(formAmount - summaryAmount)
+        .then(response => response.text())
+        .then(text => {
+            // Extract the JSON data from the script tag in the response
+            const match = text.match(/const mealPlanJson = (\{.*?\});/s);
+            if (match) {
+                const mealPlanData = JSON.parse(match[1]);
+
+                // Compare portions
+                const summaryPortions = {};
+                mealPlanData.meals.forEach(meal => {
+                    meal.foods.forEach(food => {
+                        summaryPortions[food.food] = (summaryPortions[food.food] || 0) + food.portion;
                     });
+                });
+
+                // Log any discrepancies
+                const discrepancies = [];
+                Object.keys({ ...formPortions, ...summaryPortions }).forEach(food => {
+                    const formAmount = formPortions[food] || 0;
+                    const summaryAmount = summaryPortions[food] || 0;
+                    if (Math.abs(formAmount - summaryAmount) > 0.1) {
+                        discrepancies.push({
+                            food,
+                            formAmount,
+                            summaryAmount,
+                            difference: Math.abs(formAmount - summaryAmount)
+                        });
+                    }
+                });
+
+                if (discrepancies.length > 0) {
+                    console.warn('Portion discrepancies detected:', discrepancies);
                 }
-            });
-            
-            if (discrepancies.length > 0) {
-                console.warn('Portion discrepancies detected:', discrepancies);
+
+                // Store the enhanced data in sessionStorage
+                const enhancedData = {
+                    ...mealPlanData,
+                    formPortions,
+                    summaryPortions,
+                    discrepancies
+                };
+                sessionStorage.setItem('mealPlanData', JSON.stringify(enhancedData));
+
+                // Open magic.php in a new tab
+                window.open('magic.php', '_blank');
+            } else {
+                throw new Error('Could not extract meal plan data from response');
             }
-            
-            // Store the enhanced data in sessionStorage
-            const enhancedData = {
-                ...mealPlanData,
-                formPortions,
-                summaryPortions,
-                discrepancies
-            };
-            sessionStorage.setItem('mealPlanData', JSON.stringify(enhancedData));
-            
-            // Open magic.php in a new tab
-            window.open('magic.php', '_blank');
-        } else {
-            throw new Error('Could not extract meal plan data from response');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while processing the meal plan.');
-    })
-    .finally(() => {
-        isSubmitting = false;
-    });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing the meal plan.');
+        })
+        .finally(() => {
+            isSubmitting = false;
+        });
 }
 
 function generateInputs() {
@@ -245,7 +245,7 @@ function validateMealMacros(mealIndex) {
 
     const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
     const numMeals = parseInt(document.getElementById('numero_di_pasti').value) || 0;
-    
+
     // Validate basic inputs first
     if (totalKcals <= 0 || numMeals <= 0) {
         mealValidity[mealIndex] = false;
@@ -263,11 +263,11 @@ function validateMealMacros(mealIndex) {
     const carbsPerc = parseFloat(document.getElementById(`meal_carbs_${mealIndex}`).value) || 0;
     const proteinPerc = parseFloat(document.getElementById(`meal_protein_${mealIndex}`).value) || 0;
     const fatPerc = parseFloat(document.getElementById(`meal_fat_${mealIndex}`).value) || 0;
-    
+
     const macroTotal = carbsPerc + proteinPerc + fatPerc;
     const errorElement = document.getElementById(`macro_error_${mealIndex}`);
     const nutrientInfoElement = document.getElementById(`nutrient_info_${mealIndex}`);
-    
+
     // Get selected foods
     const hiddenInputContainer = document.getElementById(`food_items_container_${mealIndex}`);
     const selectedFoods = hiddenInputContainer.querySelectorAll(`input[name="food_items_${mealIndex}[]"]`).length;
@@ -306,7 +306,7 @@ function validateMealMacros(mealIndex) {
         nutrientInfoElement.style.display = 'block';
         mealValidity[mealIndex] = true;
     }
-    
+
     toggleSubmitButton();
     return mealValidity[mealIndex];
 }
@@ -322,7 +322,7 @@ function toggleSubmitButton() {
     const submitButton = document.getElementById('submit_button');
     const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
     const numMeals = parseInt(document.getElementById('numero_di_pasti').value) || 0;
-    
+
     // Basic input validation
     if (totalKcals <= 0 || numMeals <= 0) {
         submitButton.disabled = true;
@@ -349,9 +349,9 @@ function toggleSubmitButton() {
     }
 
     const allValid = mealValidity.length === numMeals && // Correct number of meals
-                     mealValidity.every(valid => valid === true) && // All meals are valid
-                     Math.abs(totalMealPercentage - 100) <= 0.01 && // Meal percentages sum to 100%
-                     allMealsHaveFoods; // All meals have foods selected
+        mealValidity.every(valid => valid === true) && // All meals are valid
+        Math.abs(totalMealPercentage - 100) <= 0.01 && // Meal percentages sum to 100%
+        allMealsHaveFoods; // All meals have foods selected
 
     submitButton.disabled = !allValid;
     submitButton.style.display = allValid ? 'block' : 'none';
@@ -365,60 +365,60 @@ function generateProgressBars({ carbs, protein, fat }) {
                 <div class="macro-progress">
                     <div class="macro-label">
                         <span>Carbs:</span>
-                        <span${carbs.current > carbs.target ? ' style="color:red;"' : ''}>${carbs.current.toFixed(1)}g / ${carbs.target.toFixed(1)}g</span>
+                        <span${carbs.current > carbs.target ? ' style="color:red;"' : ''}>${Math.round(carbs.current)}g / ${Math.round(carbs.target)}g</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar" 
-                             style="width: ${Math.min(100, carbs.progress)}%; background-color: #4CAF50;">
-                            <span class="progress-text">${Math.min(100, carbs.progress).toFixed(1)}%</span>
+                             style="width: ${Math.min(100, Math.round(carbs.progress))}%; background-color: #4CAF50;">
+                            <span class="progress-text">${Math.min(100, Math.round(carbs.progress))}%</span>
                         </div>
                     </div>
                     <div class="remaining-text">
                         ${carbs.current < carbs.target ?
-        `Still needed: ${(carbs.target - carbs.current).toFixed(1)}g` :
-        carbs.current > carbs.target ?
-            `Exceeds by: ${(carbs.current - carbs.target).toFixed(1)}g` :
-            'Target reached'}
+            `Still needed: ${Math.round(carbs.target - carbs.current)}g` :
+            carbs.current > carbs.target ?
+                `Exceeds by: ${Math.round(carbs.current - carbs.target)}g` :
+                'Target reached'}
                     </div>
                 </div>
 
                 <div class="macro-progress">
                     <div class="macro-label">
                         <span>Protein:</span>
-                        <span${protein.current > protein.target ? ' style="color:red;"' : ''}>${protein.current.toFixed(1)}g / ${protein.target.toFixed(1)}g</span>
+                        <span${protein.current > protein.target ? ' style="color:red;"' : ''}>${Math.round(protein.current)}g / ${Math.round(protein.target)}g</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar" 
-                             style="width: ${Math.min(100, protein.progress)}%; background-color: #2196F3;">
-                            <span class="progress-text">${Math.min(100, protein.progress).toFixed(1)}%</span>
+                             style="width: ${Math.min(100, Math.round(protein.progress))}%; background-color: #2196F3;">
+                            <span class="progress-text">${Math.min(100, Math.round(protein.progress))}%</span>
                         </div>
                     </div>
                     <div class="remaining-text">
                         ${protein.current < protein.target ?
-        `Still needed: ${(protein.target - protein.current).toFixed(1)}g` :
-        protein.current > protein.target ?
-            `Exceeds by: ${(protein.current - protein.target).toFixed(1)}g` :
-            'Target reached'}
+            `Still needed: ${Math.round(protein.target - protein.current)}g` :
+            protein.current > protein.target ?
+                `Exceeds by: ${Math.round(protein.current - protein.target)}g` :
+                'Target reached'}
                     </div>
                 </div>
 
                 <div class="macro-progress">
                     <div class="macro-label">
                         <span>Fat:</span>
-                        <span${fat.current > fat.target ? ' style="color:red;"' : ''}>${fat.current.toFixed(1)}g / ${fat.target.toFixed(1)}g</span>
+                        <span${fat.current > fat.target ? ' style="color:red;"' : ''}>${Math.round(fat.current)}g / ${Math.round(fat.target)}g</span>
                     </div>
                     <div class="progress-bar-container">
                         <div class="progress-bar" 
-                             style="width: ${Math.min(100, fat.progress)}%; background-color: #FF9800;">
-                            <span class="progress-text">${Math.min(100, fat.progress).toFixed(1)}%</span>
+                             style="width: ${Math.min(100, Math.round(fat.progress))}%; background-color: #FF9800;">
+                            <span class="progress-text">${Math.min(100, Math.round(fat.progress))}%</span>
                         </div>
                     </div>
                     <div class="remaining-text">
                         ${fat.current < fat.target ?
-        `Still needed: ${(fat.target - fat.current).toFixed(1)}g` :
-        fat.current > fat.target ?
-            `Exceeds by: ${(fat.current - fat.target).toFixed(1)}g` :
-            'Target reached'}
+            `Still needed: ${Math.round(fat.target - fat.current)}g` :
+            fat.current > fat.target ?
+                `Exceeds by: ${Math.round(fat.current - fat.target)}g` :
+                'Target reached'}
                     </div>
                 </div>
             </div>
@@ -451,7 +451,7 @@ function updateNutrientDisplay(mealIndex) {
     const foodProfiles = selectedFoodNames.map(foodName => {
         // Find the food item in the foodItems array
         const foodItem = getFoodDataByName(foodName);
-        
+
         if (!foodItem) {
             console.warn(`Food data not found for: ${foodName}`);
             return null;
@@ -499,16 +499,16 @@ function updateNutrientDisplay(mealIndex) {
         <h4>Meal Targets:</h4>
         <div class="macro-targets">
             <div class="macro-target-row">
-                <span>Calories: ${mealCalories.toFixed(1)} kcal</span>
+                <span>Calories: ${Math.round(mealCalories)} kcal</span>
             </div>
             <div class="macro-target-row">
-                <span>Carbs: ${targetCarbs.toFixed(1)}g (${carbsPerc}%)</span>
+                <span>Carbs: ${Math.round(targetCarbs)}g (${Math.round(carbsPerc)}%)</span>
             </div>
             <div class="macro-target-row">
-                <span>Protein: ${targetProtein.toFixed(1)}g (${proteinPerc}%)</span>
+                <span>Protein: ${Math.round(targetProtein)}g (${Math.round(proteinPerc)}%)</span>
             </div>
             <div class="macro-target-row">
-                <span>Fat: ${targetFat.toFixed(1)}g (${fatPerc}%)</span>
+                <span>Fat: ${Math.round(targetFat)}g (${Math.round(fatPerc)}%)</span>
             </div>
         </div>
     `;
@@ -531,13 +531,13 @@ function updateNutrientDisplay(mealIndex) {
 
             nutrientInfoHtml += `
                 <div class="food-summary">
-                    <strong>${portion.name}</strong><br>
-                    Portion: ${portion.grams}g (Primary: ${portion.primaryMacro})<br>
-                    Provides:<br>
-                    - Carbs: ${portion.macros.carbs.toFixed(1)}g<br>
-                    - Protein: ${portion.macros.protein.toFixed(1)}g<br>
-                    - Fat: ${portion.macros.fat.toFixed(1)}g<br>
-                    - Calories: ${calories.toFixed(1)} kcal
+                <strong>${portion.name}</strong><br>
+                Portion: ${Math.round(portion.grams)}g (Primary: ${portion.primaryMacro})<br>
+                Provides:<br>
+                - Carbs: ${Math.round(portion.macros.carbs)}g<br>
+                - Protein: ${Math.round(portion.macros.protein)}g<br>
+                - Fat: ${Math.round(portion.macros.fat)}g<br>
+                - Calories: ${Math.round(calories)} kcal
                 </div>
             `;
         });
@@ -645,8 +645,8 @@ function initializeFoodSelector(mealIndex) {
         }
 
         const allFoods = getFoodOptions();
-        const filteredFoods = allFoods.filter(food => 
-            food.toLowerCase().includes(searchTerm) && 
+        const filteredFoods = allFoods.filter(food =>
+            food.toLowerCase().includes(searchTerm) &&
             !selectedFoods.has(food)
         );
 
@@ -654,20 +654,20 @@ function initializeFoodSelector(mealIndex) {
             .map(food => {
                 const foodData = getFoodDataByName(food);
                 if (!foodData) return '';
-                
+
                 return `
                     <div class="search-result-item">
                         <div>${food}</div>
                         <div class="macro-info">
-                            Carbs: ${foodData.fields.Carboidrati}g, 
-                            Protein: ${foodData.fields.Proteine}g, 
-                            Fat: ${foodData.fields.Grassi}g
+                            Carbs: ${Math.round(foodData.fields.Carboidrati)}g,
+                            Protein: ${Math.round(foodData.fields.Proteine)}g,
+                            Fat: ${Math.round(foodData.fields.Grassi)}g
                         </div>
                     </div>`;
             })
             .filter(html => html !== '')
             .join('');
-        
+
         searchResults.style.display = filteredFoods.length ? 'block' : 'none';
     }, 300));
 
@@ -697,30 +697,30 @@ function initializeFoodSelector(mealIndex) {
     function addSelectedFood(food) {
         // Clean the food name by removing any commas
         const cleanFoodName = food.trim();
-        
+
         if (selectedFoods.has(cleanFoodName)) return;
-        
+
         const foodData = getFoodDataByName(cleanFoodName);
         if (!foodData) {
             console.warn(`Food data not found for: ${cleanFoodName}`);
             return;
         }
-        
+
         selectedFoods.add(cleanFoodName);
         const foodTag = document.createElement('div');
         foodTag.classList.add('selected-food-tag');
         foodTag.innerHTML = `
             <div>${food}</div>
             <div class="macro-info">
-                C:${foodData.fields.Carboidrati}g, 
-                P:${foodData.fields.Proteine}g, 
-                F:${foodData.fields.Grassi}g
+                C: ${Math.round(foodData.fields.Carboidrati)}g | 
+                P: ${Math.round(foodData.fields.Proteine)}g | 
+                F: ${Math.round(foodData.fields.Grassi)}g
             </div>
             <span class="remove-food" data-food="${food}">×</span>
         `;
         selectedFoodsContainer.appendChild(foodTag);
         updateHiddenInput();
-        
+
         // Trigger validation and nutrient update
         const isValid = validateMealMacros(mealIndex);
         if (isValid) {
@@ -735,7 +735,7 @@ function initializeFoodSelector(mealIndex) {
             selectedFoods.delete(foodToRemove);
             e.target.parentElement.remove();
             updateHiddenInput();
-            
+
             // Trigger validation and nutrient update
             const isValid = validateMealMacros(mealIndex);
             if (isValid) {
@@ -747,7 +747,7 @@ function initializeFoodSelector(mealIndex) {
     function updateHiddenInput() {
         // Clear existing hidden inputs
         hiddenInputContainer.innerHTML = '';
-        
+
         selectedFoods.forEach(food => {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -797,7 +797,7 @@ function calculateCalories(carbs, protein, fat) {
 function analyzeFoodProfile(food) {
     const { carbs, protein, fat } = food.macrosper100g;
     const total = carbs + protein + fat;
-    
+
     // Calculate basic ratios
     const baseRatios = {
         carbs: carbs / total,
@@ -829,7 +829,7 @@ function analyzeFoodProfile(food) {
 
     // Determine primary and secondary macros
     const sortedScores = Object.entries(scores)
-        .sort(([,a], [,b]) => b - a);
+        .sort(([, a], [, b]) => b - a);
 
     return {
         name: food.name,
@@ -868,7 +868,7 @@ function determinePrimaryMacro(carbs, protein, fat) {
 function calculateOptimalDistribution(foods, targets) {
     // Analyze all foods
     const foodProfiles = foods.map(analyzeFoodProfile);
-    
+
     // Group foods by primary and secondary macros
     const groupedFoods = {
         carbs: foodProfiles.filter(f => f.primaryMacro === 'carbs'),
@@ -883,26 +883,26 @@ function calculateOptimalDistribution(foods, targets) {
 
     // Initial distribution based on primary macro foods
     const distribution = calculatePrimaryDistribution(groupedFoods, targets);
-    
+
     // Adjust for gaps using secondary macro foods
     const adjustedDistribution = adjustDistributionWithSecondary(distribution, groupedFoods, targets);
-    
+
     // Final optimization
     return optimizeDistribution(adjustedDistribution, foodProfiles, targets);
 }
 
 function calculatePrimaryDistribution(groupedFoods, targets) {
     const distribution = {};
-    
+
     Object.entries(targets).forEach(([macro, target]) => {
         const primaryFoods = groupedFoods[macro];
-        
+
         if (primaryFoods.length === 0) {
             return; // Will be handled in secondary distribution
         }
 
         // Weight distribution by macro density and score
-        const totalScore = primaryFoods.reduce((sum, food) => 
+        const totalScore = primaryFoods.reduce((sum, food) =>
             sum + (food.scores[macro] * food.density[macro]), 0);
 
         primaryFoods.forEach(food => {
@@ -920,7 +920,7 @@ function calculatePrimaryDistribution(groupedFoods, targets) {
 function adjustDistributionWithSecondary(distribution, groupedFoods, targets) {
     // Calculate current macro totals
     const currentTotals = calculateMacroTotals(distribution, groupedFoods.all);
-    
+
     // Find gaps in macro targets
     const gaps = {
         carbs: targets.carbs - currentTotals.carbs,
@@ -936,13 +936,13 @@ function adjustDistributionWithSecondary(distribution, groupedFoods, targets) {
         if (secondaryFoods.length === 0) return;
 
         // Distribute remaining targets among secondary foods
-        const totalSecondaryScore = secondaryFoods.reduce((sum, food) => 
+        const totalSecondaryScore = secondaryFoods.reduce((sum, food) =>
             sum + food.scores[macro], 0);
 
         secondaryFoods.forEach(food => {
             const weight = food.scores[macro] / totalSecondaryScore;
             const additionalGrams = (gap * weight * 100) / food.macrosper100g[macro];
-            
+
             if (!distribution[food.name]) {
                 distribution[food.name] = { grams: 0, contribution: {} };
             }
@@ -980,7 +980,7 @@ function optimizeDistribution(distribution, foodProfiles, targets) {
 
 function calculateError(distribution, foodProfiles, targets) {
     const totals = calculateMacroTotals(distribution, foodProfiles);
-    
+
     return Math.sqrt(
         Math.pow(totals.carbs - targets.carbs, 2) +
         Math.pow(totals.protein - targets.protein, 2) +
