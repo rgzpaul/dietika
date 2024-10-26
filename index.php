@@ -4,9 +4,12 @@ require_once 'functions.php';
 
 // Handle login
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['username'])) {
-    if (authenticateTrainer($_POST['username'], $_POST['password'])) {
+    $result = authenticateTrainer($_POST['username'], $_POST['password']);
+    if ($result === true) {
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
+    } else if ($result === 'expired') {
+        $error = "Trial expired";
     } else {
         $error = "Invalid credentials";
     }

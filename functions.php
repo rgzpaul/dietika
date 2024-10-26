@@ -1,5 +1,4 @@
 <?php
-
 session_start();
 
 // Airtable API credentials
@@ -31,15 +30,24 @@ function authenticateTrainer($username, $password) {
             $record['fields']['Username'] === $username && 
             $record['fields']['Password'] === $password) {
             
-            // Start session and store trainer info
-            session_start();
-            $_SESSION['trainer_id'] = $record['id'];
-            $_SESSION['trainer_username'] = $username;
-            return true;
+            $status = $record['fields']['Status'] ?? '';
+            
+            switch($status) {
+                case 'Active':
+                case 'Trial':
+                    session_start();
+                    $_SESSION['trainer_id'] = $record['id'];
+                    $_SESSION['trainer_username'] = $username;
+                    return true;      // Login
+                case 'Trial Expired':
+                    return 'expired'; // Trial expired error
+                default:
+                    return false;
+            }
         }
     }
     
-    return false;
+    return false;  // Invalid credentials error
 }
 
 // Function to check if user is logged in
