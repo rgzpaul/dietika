@@ -3,6 +3,7 @@ var isSubmitting = false;
 let mealValidity = [];
 
 // Core initialization
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('mealPlannerForm');
     if (form) {
@@ -11,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // 1. Utility Functions (Used across multiple other functions)
+
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -45,6 +47,7 @@ function determinePrimaryMacro(carbs, protein, fat) {
 }
 
 // 2. UI State Management
+
 function toggleSubmitButton() {
     const submitButton = document.getElementById('submit_button');
     const allValid = mealValidity.length > 0 && mealValidity.every(valid => valid === true);
@@ -153,17 +156,61 @@ function calculateOptimalPortions(foodProfiles, distribution) {
 function validateMealMacros(mealIndex) {
     if (isSubmitting) return;
 
+    const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
+    const numMeals = parseInt(document.getElementById('numero_di_pasti').value) || 0;
+    
+    // Validate basic inputs first
+    if (totalKcals <= 0 || numMeals <= 0) {
+        mealValidity[mealIndex] = false;
+        toggleSubmitButton();
+        return false;
+    }
+
+    // Get all meal percentages and calculate total
+    let totalMealPercentage = 0;
+    for (let i = 0; i < numMeals; i++) {
+        const mealPerc = parseFloat(document.getElementById(`percentage_${i}`).value) || 0;
+        totalMealPercentage += mealPerc;
+    }
+
     const carbsPerc = parseFloat(document.getElementById(`meal_carbs_${mealIndex}`).value) || 0;
     const proteinPerc = parseFloat(document.getElementById(`meal_protein_${mealIndex}`).value) || 0;
     const fatPerc = parseFloat(document.getElementById(`meal_fat_${mealIndex}`).value) || 0;
     
-    const total = carbsPerc + proteinPerc + fatPerc;
+    const macroTotal = carbsPerc + proteinPerc + fatPerc;
     const errorElement = document.getElementById(`macro_error_${mealIndex}`);
     const nutrientInfoElement = document.getElementById(`nutrient_info_${mealIndex}`);
     
-    if (Math.abs(total - 100) > 0.01) {
+    // Get selected foods
+    const hiddenInputContainer = document.getElementById(`food_items_container_${mealIndex}`);
+    const selectedFoods = hiddenInputContainer.querySelectorAll(`input[name="food_items_${mealIndex}[]"]`).length;
+
+    let errorMessages = [];
+
+    // Check macros sum to 100%
+    if (Math.abs(macroTotal - 100) > 0.01) {
+        errorMessages.push(`Macro percentages must sum to 100% (current: ${macroTotal.toFixed(2)}%)`);
+    }
+
+    // Check if foods are selected
+    if (selectedFoods === 0) {
+        errorMessages.push('At least one food item must be selected');
+    }
+
+    // Check meal percentage
+    const mealPerc = parseFloat(document.getElementById(`percentage_${mealIndex}`).value) || 0;
+    if (mealPerc <= 0) {
+        errorMessages.push('Meal percentage must be greater than 0');
+    }
+
+    // Check if total meal percentages exceed 100%
+    if (totalMealPercentage > 100.01) {
+        errorMessages.push(`Total meal percentages exceed 100% (current: ${totalMealPercentage.toFixed(2)}%)`);
+    }
+
+    if (errorMessages.length > 0) {
         errorElement.style.display = 'block';
-        errorElement.innerHTML = `Macro percentages must sum to 100% (current: ${total.toFixed(2)}%)`;
+        errorElement.innerHTML = errorMessages.join('<br>');
         nutrientInfoElement.style.display = 'none';
         mealValidity[mealIndex] = false;
     } else {
@@ -176,6 +223,76 @@ function validateMealMacros(mealIndex) {
     toggleSubmitButton();
     return mealValidity[mealIndex];
 }
+
+// Enhanced toggle submit button function
+function toggleSubmitButton() {
+    const submitButton = document.getElementById('submit_button');
+    const totalKcals = parseFloat(document.getElementById('total_kcals').value) || 0;
+    const numMeals = parseInt(document.getElementById('numero_di_pasti').value) || 0;
+    
+    // Basic input validation
+    if (totalKcals <= 0 || numMeals <= 0) {
+        submitButton.disabled = true;
+        submitButton.style.display = 'none';
+        return;
+    }
+
+    // Check total meal percentages
+    let totalMealPercentage = 0;
+    for (let i = 0; i < numMeals; i++) {
+        const mealPerc = parseFloat(document.getElementById(`percentage_${i}`).value) || 0;
+        totalMealPercentage += mealPerc;
+    }
+
+    // Check if all meals have foods selected
+    let allMealsHaveFoods = true;
+    for (let i = 0; i < numMeals; i++) {
+        const hiddenInputContainer = document.getElementById(`food_items_container_${i}`);
+        const selectedFoods = hiddenInputContainer.querySelectorAll(`input[name="food_items_${i}[]"]`).length;
+        if (selectedFoods === 0) {
+            allMealsHaveFoods = false;
+            break;
+        }
+    }
+
+    const allValid = mealValidity.length === numMeals && // Correct number of meals
+                     mealValidity.every(valid => valid === true) && // All meals are valid
+                     Math.abs(totalMealPercentage - 100) <= 0.01 && // Meal percentages sum to 100%
+                     allMealsHaveFoods; // All meals have foods selected
+
+    submitButton.disabled = !allValid;
+    submitButton.style.display = allValid ? 'block' : 'none';
+}
+
+// Update existing event listeners to trigger validation
+function generateInputs() {
+    // ... existing code ...
+
+    // Add these lines at the end of the function
+    mealValidity = Array(numMeals).fill(false); // Initialize all as invalid
+    toggleSubmitButton(); // Check initial state
+}
+
+// Update initialization
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('mealPlannerForm');
+    if (form) {
+        form.addEventListener('submit', handleFormSubmit);
+    }
+
+    // Add listeners for total calories and number of meals
+    document.getElementById('total_kcals').addEventListener('input', () => {
+        if (mealValidity.length > 0) {
+            mealValidity.forEach((_, index) => validateMealMacros(index));
+        }
+    });
+
+    document.getElementById('numero_di_pasti').addEventListener('input', () => {
+        if (mealValidity.length > 0) {
+            mealValidity.forEach((_, index) => validateMealMacros(index));
+        }
+    });
+});
 
 // 5. Display Generation Functions
 
@@ -382,6 +499,7 @@ function updateNutrientDisplay(mealIndex) {
 }
 
 // 6. Component Initialization Functions
+
 function initializeFoodSelector(mealIndex) {
     if (!foodItems || !foodItems.length) {
         console.warn('No food items available for selector initialization');
@@ -613,11 +731,38 @@ function handleFormSubmit(event) {
 
     if (errorMessage) {
         alert(errorMessage);
-    } else {
-        this.submit();
+        isSubmitting = false;
+        return;
     }
 
-    isSubmitting = false;
+    // Submit form normally to get the JSON response
+    fetch(this.action, {
+        method: 'POST',
+        body: new FormData(this)
+    })
+    .then(response => response.text())
+    .then(text => {
+        // Extract the JSON data from the script tag in the response
+        const match = text.match(/const mealPlanJson = (\{.*?\});/s);
+        if (match) {
+            const mealPlanData = JSON.parse(match[1]);
+            
+            // Store the data in sessionStorage
+            sessionStorage.setItem('mealPlanData', JSON.stringify(mealPlanData));
+            
+            // Open magic.php in a new tab
+            window.open('magic.php', '_blank');
+        } else {
+            throw new Error('Could not extract meal plan data from response');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while processing the meal plan.');
+    })
+    .finally(() => {
+        isSubmitting = false;
+    });
 }
 
 function generateInputs() {

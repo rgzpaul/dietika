@@ -77,11 +77,10 @@ $cleanFoodItems = array_map(function($item) {
             <div class="button-group">
                 <button type="button" onclick="generateInputs()">Start</button>
                 <button type="button" onclick="safeRefresh()">Refresh</button>
-                <button type="button" onclick="window.location.href='./magic'">Magic</button>
             </div>
 
             <div id="inputs_container"></div>
-            <button type="submit" id="submit_button" style="display: none;">Copy</button>
+            <button type="submit" id="submit_button" style="display: none;">Go to Summary</button>
         </form>
 
         <script>

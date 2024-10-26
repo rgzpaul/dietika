@@ -1,3 +1,15 @@
+// Inizialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Try to get data from sessionStorage
+    const storedData = sessionStorage.getItem('mealPlanData');
+    if (storedData) {
+        // Clear the data after retrieving it
+        sessionStorage.removeItem('mealPlanData');
+        // Display the meal plan
+        displayMealPlan(JSON.parse(storedData));
+    }
+});
+
 // Function to parse JSON data from clipboard and display the meal plan
 async function parseClipboard() {
     try {
